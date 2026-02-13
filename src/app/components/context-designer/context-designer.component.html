@@ -1,0 +1,97 @@
+<div class="title-bar">
+  <a href="https://designer.causalbench.org" target="_blank" rel="noopener noreferrer">
+    <img src="assets/logo.png" alt="Logo" class="logo">
+  </a>
+  <span class="app-title">CausalBench Designer v1.1h</span>
+  <div class="title-bar-actions">
+    <a class="help-btn node-editor-btn" routerLink="/node-editor" style="background: #3498db; font-weight: bold;">
+      Blueprint Node Editor
+    </a>
+    <a class="help-btn" href="https://causalbench.org" target="_blank" rel="noopener noreferrer">CausalBench</a>
+    <button class="help-btn" (click)="showHelp = true">Help</button>
+    <a class="help-btn" href="https://docs.causalbench.org" target="_blank" rel="noopener noreferrer">Documentation</a>
+  </div>
+</div>
+
+<!-- About Popup -->
+<div class="help-popup-overlay" *ngIf="showAbout" (click)="showAbout = false">
+  <div class="help-popup" (click)="$event.stopPropagation()">
+    <h3>About</h3>
+    <div class="help-content">
+      <p><b>CausalBench Designer</b> is a context design tool for CausalBench.</p>
+      <p>Version 1.0f</p>
+      <p>Visit <a href="https://causalbench.org" target="_blank">causalbench.org</a> for more information.</p>
+    </div>
+    <button class="btn btn-primary" (click)="showAbout = false">Close</button>
+  </div>
+</div>
+
+<!-- Help Popup -->
+<div class="help-popup-overlay" *ngIf="showHelp" (click)="showHelp = false">
+  <div class="help-popup" (click)="$event.stopPropagation()">
+    <h3>Help</h3>
+    <div class="help-content">
+      <p>CausalBench Designer is a tool for designing contexts to be used in CausalBench. It allows you to create and edit contexts, and to export them to a variety of formats.</p>
+      <p>To add a dataset, click the "Add Dataset" button and select the dataset you want to add.</p>
+      <p>To add a model, click the "Add Model" button and select the model you want to add.</p>
+      <p>To add a metric, click the "Add Metric" button and select the metric you want to add.</p>
+      <p>After creating the context, use the "Export Context Template" button to export the context to a template file, which can be executed in CausalBench.</p>
+      <p>For any further questions, please contact us at <a href="mailto:support@causalbench.org">support&#64;causalbench.org</a>.</p>
+    </div>
+    <button class="btn btn-primary" (click)="showHelp = false">Close</button>
+  </div>
+</div>
+
+<div class="app-container">
+  <!-- Token Input Component -->
+  <!-- <app-token-input></app-token-input> -->
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <!-- Sidebar -->
+    <app-sidebar
+      [availableDatasets]="availableDatasets"
+      [availableModels]="availableModels"
+      [availableMetrics]="availableMetrics"
+      [currentItem]="currentItem"
+      [currentItemType]="currentItemType"
+      [currentDatasets]="datasets"
+      [currentModels]="models"
+      [currentMetrics]="metrics"
+      (addDataset)="onAddDataset()"
+      (addModel)="onAddModel()"
+      (addMetric)="onAddMetric()"
+      (addItemWithData)="onAddItemWithData($event)"
+      (removeItem)="onRemoveItem()"
+      (exportContext)="onExportContext()"
+      (applyItem)="onApplyItem($event)">
+    </app-sidebar>
+
+    <!-- Views Container -->
+    <div class="views-container">
+      <app-context-view
+        [datasets]="datasets"
+        [models]="models"
+        [metrics]="metrics"
+        [loadingDatasets]="loadingDatasets"
+        [loadingModels]="loadingModels"
+        [loadingMetrics]="loadingMetrics"
+        (itemSelected)="onItemSelected($event)"
+        (addModel)="onAddModel()"
+        (addMetric)="onAddMetric()"
+        (taskTypeChange)="onTaskTypeChange($event)">
+      </app-context-view>
+    </div>
+  </div>
+
+  <!-- Export Dialog -->
+  <app-export-dialog
+    [showDialog]="showExportDialog"
+    [datasets]="datasets"
+    [models]="models"
+    [metrics]="metrics"
+    [selectedTaskType]="selectedTaskType"
+    (closeDialog)="onCloseExportDialog()">
+  </app-export-dialog>
+</div>
+
