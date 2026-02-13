@@ -22,11 +22,13 @@ export class ContextDesignerComponent implements OnInit {
   availableDatasets: any[] = [];
   availableModels: any[] = [];
   availableMetrics: any[] = [];
-
+  availableTasks: any[] = [];
+  
   // Loading states
   loadingDatasets = false;
   loadingModels = false;
   loadingMetrics = false;
+  loadingTasks = false;
 
   // Export dialog state
   showExportDialog = false;
@@ -83,6 +85,21 @@ export class ContextDesignerComponent implements OnInit {
         error: (error) => {
           console.error('Error loading metrics:', error);
           this.loadingMetrics = false;
+          // Fallback to mock data or show error message
+        }
+      });
+
+      // Load available tasks from API with default request body
+      this.loadingTasks = true;
+      this.apiService.getTasks(token).subscribe({
+        next: (data) => {
+          this.availableTasks = data;
+          console.log('Available tasks loaded:', data);
+          this.loadingTasks = false;
+        },
+        error: (error) => {
+          console.error('Error loading tasks:', error);
+          this.loadingTasks = false;
           // Fallback to mock data or show error message
         }
       });

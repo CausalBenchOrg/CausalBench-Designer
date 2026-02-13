@@ -193,7 +193,16 @@ export class ApiService {
     "user_id": "1"
   };
 
-  private readonly TASKS_REQUEST_BODY = {};
+  private readonly TASKS_REQUEST_BODY = {
+    "showOnlyUserData": false,
+    "searchText": "",
+    "sortField": "",
+    "sortState": "",
+    "pageNumber": 0,
+    "pageSize": 20,
+    "filters": [],
+    "user_id": "1"
+  };
 
   constructor(
     private http: HttpClient
@@ -276,16 +285,18 @@ export class ApiService {
     );
   }
 
-  // Get tasks from API - expects { data: { tasks: [...] } }
-  getTasks(token: string): Observable<any[]> {
-    return this.http.post<ApiResponse<any[]>>(`${this.baseUrl}/tasks/fetch`, this.TASKS_REQUEST_BODY, { headers: this.getHeaders(token) })
+  // Get tasks from API - expects { data: { task_descriptors: [{ task_name: string }, ...] } }
+  getTasks(token: string): Observable<string[]> {
+    return this.http.post<ApiResponse<{ task_descriptors: any[] }>>(`${this.baseUrl}/tasks/fetch`, this.TASKS_REQUEST_BODY, { headers: this.getHeaders(token) })
       .pipe(
         map(response => {
-          if (response.success) {
-            return response.data.map(task => task.task_id);
-          } else {
-            throw new Error(response.message);
+          if (response?.data?.task_descriptors) {
+            return response.data.task_descriptors.map((t: any) =>
+              typeof t === 'string' ? t : (t?.task_name ?? String(t))
+            );
           }
+          console.warn('Unexpected task response format:', response);
+          return [];
         }),
         catchError(error => {
           console.error('Error fetching tasks:', error);
@@ -293,6 +304,8 @@ export class ApiService {
         })
       );
   }
+
+
 
   // Alternative endpoints if your API uses different paths
   // getDatasetsYaml(): Observable<any> {
