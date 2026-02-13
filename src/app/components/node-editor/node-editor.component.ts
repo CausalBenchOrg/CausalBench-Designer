@@ -12,7 +12,7 @@ export interface NodePort {
 
 export interface GraphNode {
   id: string;
-  type: 'dataset' | 'preprocessing' | 'model' | 'metric';
+  type: 'dataset' | 'processor' | 'model' | 'metric';
   x: number;
   y: number;
   width: number;
@@ -244,7 +244,7 @@ export class NodeEditorComponent implements OnInit {
     this.createNode('dataset', centerX - 300, centerY - 50);
     
     // Preprocessing node
-    this.createNode('preprocessing', centerX - 100, centerY - 50);
+    this.createNode('processor', centerX - 100, centerY - 50);
     
     // Model node
     this.createNode('model', centerX + 100, centerY - 50);
@@ -403,9 +403,9 @@ export class NodeEditorComponent implements OnInit {
         this.selectedVersion = node.data.selected_version || '';
         this.populateMetricFields(node.data);
         this.loadHyperparameters();
-      } else if (node.type === 'preprocessing' && node.data.preprocessing_id) {
-        // Handle preprocessing if it has similar structure
-        this.selectedId = String(node.data.preprocessing_id);
+      } else if (node.type === 'processor' && node.data.processor_id) {
+        // Handle processor if it has similar structure
+        this.selectedId = String(node.data.processor_id);
         this.selectedVersion = node.data.selected_version || '';
       }
     }
@@ -797,11 +797,39 @@ export class NodeEditorComponent implements OnInit {
   getNodeTypeLabel(type: string): string {
     const labels: { [key: string]: string } = {
       'dataset': 'Dataset',
-      'preprocessing': 'Preprocessing',
+      'processor': 'Processor',
       'model': 'Model',
       'metric': 'Metric'
     };
     return labels[type] || type;
+  }
+
+  getProcessorLabel(node: GraphNode): string {
+    if (node.type !== 'processor') return '';
+    const hasModelInput = this.edges.some(edge => {
+      if (edge.targetNodeId === node.id) {
+        const sourceNode = this.nodes.find(n => n.id === edge.sourceNodeId);
+        return sourceNode && sourceNode.type === 'model';
+      }
+      return false;
+    });
+    const hasDatasetInput = this.edges.some(edge => {
+      if (edge.targetNodeId === node.id) {
+        const sourceNode = this.nodes.find(n => n.id === edge.sourceNodeId);
+        return sourceNode && sourceNode.type === 'dataset';
+      }
+      return false;
+    });
+    const hasModelOutput = this.edges.some(edge => {
+      if (edge.sourceNodeId === node.id) {
+        const targetNode = this.nodes.find(n => n.id === edge.targetNodeId);
+        return targetNode && targetNode.type === 'model';
+      }
+      return false;
+    });
+    if (hasModelInput) return 'Model Output Processor';
+    if (hasDatasetInput && hasModelOutput) return 'Data Processor';
+    return 'Processor';
   }
 
   onExportContext() {
@@ -841,6 +869,14 @@ export class NodeEditorComponent implements OnInit {
   }
 
   getNodeDisplayTitle(node: GraphNode): string {
+    // Processor: show context label (Data Processor / Model Output Processor) and optional name
+    if (node.type === 'processor') {
+      const label = this.getProcessorLabel(node);
+      if (node.data && node.data.processor_name) {
+        return `${label}: ${node.data.processor_name}`;
+      }
+      return label;
+    }
     // If node has configured data with a name, show it
     if (node.data) {
       if (node.data.dataset_name) {
@@ -905,27 +941,23 @@ export class NodeEditorComponent implements OnInit {
     const targetType = targetNode.type;
     
     // Connection rules:
-    // Dataset -> Preprocessing
-    // Dataset -> Model
-    // Model -> Metric
-    // Preprocessing -> Preprocessing
-    // Preprocessing -> Model
-    // Preprocessing -> Metric
+    // Dataset -> Processor, Model
+    // Model -> Processor, Metric
+    // Processor -> Processor, Model, Metric
     
     if (sourceType === 'dataset') {
-      return targetType === 'preprocessing' || targetType === 'model';
+      return targetType === 'processor' || targetType === 'model';
     }
     
     if (sourceType === 'model') {
-      return targetType === 'metric';
+      return targetType === 'processor' || targetType === 'metric';
     }
     
-    if (sourceType === 'preprocessing') {
-      return targetType === 'preprocessing' || targetType === 'model' || targetType === 'metric';
+    if (sourceType === 'processor') {
+      return targetType === 'processor' || targetType === 'model' || targetType === 'metric';
     }
     
-    // Metric cannot be a source
-    // Preprocessing cannot connect to Dataset
+    // Metric cannot be a source; Processor cannot connect to Dataset
     return false;
   }
 
@@ -956,7 +988,7 @@ export class NodeEditorComponent implements OnInit {
     }
   }
 
-  createNode(type: 'dataset' | 'preprocessing' | 'model' | 'metric', x?: number, y?: number) {
+  createNode(type: 'dataset' | 'processor' | 'model' | 'metric', x?: number, y?: number) {
     let nodeX: number;
     let nodeY: number;
     
@@ -999,7 +1031,7 @@ export class NodeEditorComponent implements OnInit {
   getNodeTitle(type: string): string {
     const titles: { [key: string]: string } = {
       'dataset': 'Dataset',
-      'preprocessing': 'Preprocessing',
+      'processor': 'Processor',
       'model': 'Model',
       'metric': 'Metric'
     };
@@ -1009,7 +1041,7 @@ export class NodeEditorComponent implements OnInit {
   getInputPorts(type: string): NodePort[] {
     const ports: { [key: string]: NodePort[] } = {
       'dataset': [],
-      'preprocessing': [{ id: 'input-1', name: 'Input', type: 'input', x: 0, y: 0 }],
+      'processor': [{ id: 'input-1', name: 'Input', type: 'input', x: 0, y: 0 }],
       'model': [{ id: 'input-1', name: 'Input', type: 'input', x: 0, y: 0 }],
       'metric': [{ id: 'input-1', name: 'Input', type: 'input', x: 0, y: 0 }]
     };
@@ -1019,7 +1051,7 @@ export class NodeEditorComponent implements OnInit {
   getOutputPorts(type: string): NodePort[] {
     const ports: { [key: string]: NodePort[] } = {
       'dataset': [{ id: 'output-1', name: 'Output', type: 'output', x: 0, y: 0 }],
-      'preprocessing': [{ id: 'output-1', name: 'Output', type: 'output', x: 0, y: 0 }],
+      'processor': [{ id: 'output-1', name: 'Output', type: 'output', x: 0, y: 0 }],
       'model': [{ id: 'output-1', name: 'Output', type: 'output', x: 0, y: 0 }],
       'metric': []
     };
@@ -1083,7 +1115,7 @@ export class NodeEditorComponent implements OnInit {
   getNodeColor(type: string): string {
     const colors: { [key: string]: string } = {
       'dataset': '#9b59b6',
-      'preprocessing': '#e67e22',
+      'processor': '#e67e22',
       'model': '#3498db',
       'metric': '#2ecc71'
     };
