@@ -8,8 +8,11 @@ import { TokenService } from '../../services/token.service';
   styleUrls: ['./context-view.component.scss']
 })
 export class ContextViewComponent implements OnInit {
-  tasks: string[] = [];
-  selectedTaskType: string = '';
+  availableTasks: any[] = [];
+  selectedTaskId: string = '';
+  selectedTaskVersion: string = '';
+  taskVersions: string[] = [];
+  selectedTaskType: string = ''; // task_name, used for filtering models/metrics and export
   loadingTasks: boolean = false;
 
   @Input() datasets: any[] = [];
@@ -86,8 +89,8 @@ export class ContextViewComponent implements OnInit {
     this.tokenService.token$.subscribe(token => {
       this.loadingTasks = true;
       this.apiService.getTasks(token).subscribe({
-        next: (tasks: string[]) => {
-          this.tasks = tasks;
+        next: (tasks: any[]) => {
+          this.availableTasks = tasks;
           this.loadingTasks = false;
         },
         error: (error) => {
@@ -98,9 +101,26 @@ export class ContextViewComponent implements OnInit {
     });
   }
 
-  onTaskTypeChange(event: any) {
-    this.selectedTaskType = event.target.value;
-    this.taskTypeChange.emit(this.selectedTaskType);
+  onTaskIdChange(taskId: string) {
+    this.selectedTaskId = taskId || '';
+    this.selectedTaskVersion = '';
+    this.taskVersions = [];
+    const task = this.availableTasks.find((t: any) => String(t.task_id) === String(taskId));
+    if (task) {
+      this.selectedTaskType = task.task_name;
+      const versionList = task.task_version_info_list ?? [];
+      this.taskVersions = versionList.map((v: any) => String(v.version?.version_number ?? v.version_number ?? v));
+      if (this.taskVersions.length > 0) {
+        this.selectedTaskVersion = this.taskVersions[0];
+      }
+      this.taskTypeChange.emit(this.selectedTaskType);
+    } else {
+      this.selectedTaskType = '';
+    }
+  }
+
+  onTaskVersionChange(event: any) {
+    this.selectedTaskVersion = event.target.value;
   }
 
   onAddModel() {

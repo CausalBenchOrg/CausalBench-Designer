@@ -105,14 +105,13 @@ export class NodeEditorComponent implements OnInit {
   hyperparameterSets: any[] = [];
   showHyperparameterSection = false;
   
-  // Task selection
-  tasks: string[] = [];
+  // Task selection (full descriptors: task_id, task_name, task_version_info_list)
+  availableTasks: any[] = [];
   selectedTaskId: string = '';
   selectedTaskVersion: string = '';
   taskVersions: string[] = [];
+  selectedTaskName: string = ''; // task_name, for export
   loadingTasks = false;
-  availableTasks: any[] = [];
-  taskOptions: { id: string, name: string }[] = [];
   
   // Export dialog state
   showExportDialog = false;
@@ -138,8 +137,8 @@ export class NodeEditorComponent implements OnInit {
     this.tokenService.token$.subscribe(token => {
       this.loadingTasks = true;
       this.apiService.getTasks(token).subscribe({
-        next: (tasks: string[]) => {
-          this.tasks = tasks;
+        next: (tasks: any[]) => {
+          this.availableTasks = tasks;
           this.loadingTasks = false;
         },
         error: (error) => {
@@ -153,13 +152,20 @@ export class NodeEditorComponent implements OnInit {
   onTaskIdSelect() {
     this.selectedTaskVersion = '';
     this.taskVersions = [];
-    // For now, tasks are just IDs. If your API provides versions, load them here
-    // For example: this.loadTaskVersions(this.selectedTaskId);
+    this.selectedTaskName = '';
+    const task = this.availableTasks.find((t: any) => String(t.task_id) === String(this.selectedTaskId));
+    if (task) {
+      this.selectedTaskName = task.task_name;
+      const versionList = task.task_version_info_list ?? [];
+      this.taskVersions = versionList.map((v: any) => String(v.version?.version_number ?? v.version_number ?? v));
+      if (this.taskVersions.length > 0) {
+        this.selectedTaskVersion = this.taskVersions[0];
+      }
+    }
   }
 
   onTaskVersionSelect() {
-    // Handle task version selection if needed
-    console.log('Task selected:', this.selectedTaskId, 'Version:', this.selectedTaskVersion);
+    // Version selection updated
   }
 
   loadAvailableData() {

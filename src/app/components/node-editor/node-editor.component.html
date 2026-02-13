@@ -20,7 +20,7 @@
         (change)="onTaskIdSelect()"
         [disabled]="loadingTasks">
         <option value="">{{ loadingTasks ? 'Loading tasks...' : 'Select Task' }}</option>
-        <option *ngFor="let task of tasks" [value]="task">{{ task }}</option>
+        <option *ngFor="let task of availableTasks" [value]="task.task_id">{{ task.task_name }}</option>
       </select>
       <select 
         *ngIf="selectedTaskId && taskVersions.length > 0"
@@ -30,7 +30,7 @@
         <option value="">Select Version</option>
         <option *ngFor="let version of taskVersions" [value]="version">{{ version }}</option>
       </select>
-      <span *ngIf="selectedTaskId && !taskVersions.length" class="task-info">{{ selectedTaskId }}</span>
+      <span *ngIf="selectedTaskId && taskVersions.length === 0" class="task-info">{{ selectedTaskName || selectedTaskId }}</span>
     </div>
     <div class="toolbar-section">
       <span class="toolbar-label">Add Node:</span>
@@ -447,7 +447,7 @@
     [datasets]="getExportDatasets()"
     [models]="getExportModels()"
     [metrics]="getExportMetrics()"
-    [selectedTaskType]="selectedTaskId || ''"
+    [selectedTaskType]="selectedTaskName || selectedTaskId || ''"
     (closeDialog)="onCloseExportDialog()">
   </app-export-dialog>
 </div>
