@@ -90,10 +90,13 @@ export class NodeEditorComponent implements OnInit {
   itemUrl = '';
   itemTimestamp = '';
   
-  // Dropdown options
-  datasetOptions: { id: string, name: string }[] = [];
-  modelOptions: { id: string, name: string }[] = [];
-  metricOptions: { id: string, name: string }[] = [];
+  // Dropdown options (model/metric options include matchesTask for task-based styling)
+  datasetOptions: { id: string, name: string; matchesTask?: boolean }[] = [];
+  modelOptions: { id: string, name: string; matchesTask?: boolean }[] = [];
+  metricOptions: { id: string, name: string; matchesTask?: boolean }[] = [];
+  
+  // Custom ID dropdown state (for model/metric so we can style options with task-match highlight)
+  idDropdownOpen = false;
   
   // Dataset file mapping
   availableDatasetFiles: { filename: string, filetype: string }[] = [];
@@ -162,6 +165,8 @@ export class NodeEditorComponent implements OnInit {
         this.selectedTaskVersion = this.taskVersions[0];
       }
     }
+    // Refresh dropdown options when task changes (for task-based filtering/highlighting)
+    this.updateDropdownOptions();
   }
 
   onTaskVersionSelect() {
@@ -214,13 +219,41 @@ export class NodeEditorComponent implements OnInit {
     });
   }
 
-  updateDropdownOptions() {
-    this.datasetOptions = this.getUniqueOptions(this.availableDatasets, 'dataset_id', 'dataset_name');
-    this.modelOptions = this.getUniqueOptions(this.availableModels, 'modl_id', 'modl_name');
-    this.metricOptions = this.getUniqueOptions(this.availableMetrics, 'metric_id', 'metric_name');
+  /** Match a task entry to the selected task (by task_name or task_id). */
+  private taskMatches(task: any): boolean {
+    if (!this.selectedTaskName && !this.selectedTaskId) return false;
+    const byName = task.task_name && task.task_name === this.selectedTaskName;
+    const byId = this.selectedTaskId && String(task.task_id ?? task.id ?? '') === String(this.selectedTaskId);
+    return byName || byId;
   }
 
-  getUniqueOptions(items: any[], idField: string, nameField: string): { id: string, name: string }[] {
+  /** True if this model has at least one version that matches the selected task. */
+  private modelMatchesSelectedTask(model: any): boolean {
+    const list = model.modl_version_info_list ?? model.data?.modl_version_info_list ?? [];
+    for (const v of list) {
+      const tasks = v.version?.tasks ?? v.tasks ?? [];
+      if (tasks.some((t: any) => this.taskMatches(t))) return true;
+    }
+    return false;
+  }
+
+  /** True if this metric has at least one version that matches the selected task. */
+  private metricMatchesSelectedTask(metric: any): boolean {
+    const list = metric.metric_version_info_list ?? metric.data?.metric_version_info_list ?? [];
+    for (const v of list) {
+      const tasks = v.version?.tasks ?? v.tasks ?? [];
+      if (tasks.some((t: any) => this.taskMatches(t))) return true;
+    }
+    return false;
+  }
+
+  updateDropdownOptions() {
+    this.datasetOptions = this.getUniqueOptions(this.availableDatasets, 'dataset_id', 'dataset_name');
+    this.modelOptions = this.getModelOptions();
+    this.metricOptions = this.getMetricOptions();
+  }
+
+  getUniqueOptions(items: any[], idField: string, nameField: string): { id: string, name: string; matchesTask?: boolean }[] {
     const uniqueItems = items.reduce((acc: any[], item: any) => {
       const id = String(item[idField]);
       if (!acc.find((existing: { id: string, name: string }) => existing.id === id)) {
@@ -239,6 +272,84 @@ export class NodeEditorComponent implements OnInit {
       if (nameA > nameB) return 1;
       return 0;
     });
+  }
+
+  getModelOptions(): { id: string; name: string; matchesTask?: boolean }[] {
+    const withMatch = this.availableModels.map((m: any) => ({
+      id: String(m.modl_id),
+      name: m.modl_name || `Model ${m.modl_id}`,
+      matchesTask: this.modelMatchesSelectedTask(m)
+    }));
+    const byId = new Map<string, { id: string; name: string; matchesTask: boolean }>();
+    withMatch.forEach(o => {
+      const existing = byId.get(o.id);
+      if (!existing || o.matchesTask) byId.set(o.id, { ...o, matchesTask: (existing?.matchesTask ?? false) || (o.matchesTask ?? false) });
+    });
+    const list = Array.from(byId.values());
+    const sort = (a: { id: string; name: string }, b: { id: string; name: string }) => {
+      const numA = parseInt(a.id);
+      const numB = parseInt(b.id);
+      return isNaN(numA) || isNaN(numB) ? a.name.localeCompare(b.name) : numA - numB;
+    };
+    list.sort((a, b) => {
+      if (a.matchesTask && !b.matchesTask) return -1;
+      if (!a.matchesTask && b.matchesTask) return 1;
+      return sort(a, b);
+    });
+    return list;
+  }
+
+  getMetricOptions(): { id: string; name: string; matchesTask?: boolean }[] {
+    const withMatch = this.availableMetrics.map((m: any) => ({
+      id: String(m.metric_id),
+      name: m.metric_name || `Metric ${m.metric_id}`,
+      matchesTask: this.metricMatchesSelectedTask(m)
+    }));
+    const byId = new Map<string, { id: string; name: string; matchesTask: boolean }>();
+    withMatch.forEach(o => {
+      const existing = byId.get(o.id);
+      if (!existing || o.matchesTask) byId.set(o.id, { ...o, matchesTask: (existing?.matchesTask ?? false) || (o.matchesTask ?? false) });
+    });
+    const list = Array.from(byId.values());
+    const sort = (a: { id: string; name: string }, b: { id: string; name: string }) => {
+      const numA = parseInt(a.id);
+      const numB = parseInt(b.id);
+      return isNaN(numA) || isNaN(numB) ? a.name.localeCompare(b.name) : numA - numB;
+    };
+    list.sort((a, b) => {
+      if (a.matchesTask && !b.matchesTask) return -1;
+      if (!a.matchesTask && b.matchesTask) return 1;
+      return sort(a, b);
+    });
+    return list;
+  }
+
+  get idOptions(): { id: string; name: string; matchesTask?: boolean }[] {
+    if (!this.detailNode) return [];
+    if (this.detailNode.type === 'dataset') return this.datasetOptions;
+    if (this.detailNode.type === 'model') return this.modelOptions;
+    if (this.detailNode.type === 'metric') return this.metricOptions;
+    return [];
+  }
+
+  get selectedIdLabel(): string {
+    if (!this.selectedId) return 'Select ID';
+    const opt = this.idOptions.find(o => o.id === this.selectedId);
+    return opt ? `${opt.id} - ${opt.name}` : this.selectedId;
+  }
+
+  openIdDropdown(event: Event) {
+    event.stopPropagation();
+    if (this.detailNode && (this.detailNode.type === 'model' || this.detailNode.type === 'metric')) {
+      this.idDropdownOpen = !this.idDropdownOpen;
+    }
+  }
+
+  selectIdOption(id: string, event: Event) {
+    event.stopPropagation();
+    this.selectedId = id;
+    this.idDropdownOpen = false;
+    this.onIdSelect();
   }
 
   addExampleNodes() {
@@ -435,112 +546,111 @@ export class NodeEditorComponent implements OnInit {
 
   populateDatasetFields(data: any) {
     const dataset = this.availableDatasets.find(d => String(d.dataset_id) === String(data.dataset_id));
-    if (dataset) {
-      this.itemName = dataset.dataset_name || '';
-      this.itemDescription = dataset.dataset_description || '';
-      this.itemAuthor = dataset.uploader || '';
-      this.itemVisibility = dataset.visibility || '';
-      this.itemUrl = dataset.url || '';
-      this.itemTimestamp = dataset.timestamp || '';
-      
-      // Load dataset files
-      if (this.selectedVersion && dataset.dataset_version_info_list) {
-        const versionInfo = dataset.dataset_version_info_list.find(
-          (v: any) => String(v.version.version_number) === this.selectedVersion
-        );
-        if (versionInfo && versionInfo.files) {
+    if (dataset && this.selectedVersion && dataset.dataset_version_info_list) {
+      const versionInfo = dataset.dataset_version_info_list.find(
+        (v: any) => String(v.version.version_number) === this.selectedVersion
+      );
+      if (versionInfo) {
+        // Extract fields from version info structure (same as sidebar)
+        this.itemName = versionInfo.dataset?.dataset_name || '';
+        this.itemDescription = versionInfo.description?.description_text || '';
+        this.itemAuthor = versionInfo.description?.author || '';
+        this.itemVisibility = versionInfo.metadata?.visibility || '';
+        this.itemUrl = versionInfo.metadata?.url || '';
+        this.itemTimestamp = versionInfo.metadata?.upload_timestamp || '';
+        
+        // Load dataset files
+        if (versionInfo.files) {
           this.availableDatasetFiles = versionInfo.files.map((f: any) => ({
             filename: f.filename,
             filetype: f.filetype
           }));
         }
       }
-      
-      // Load file mappings if they exist
-      if (data.file_mappings) {
-        this.selectedDataFile = data.file_mappings.data_file || '';
-        this.selectedGroundTruthFile = data.file_mappings.ground_truth_file || '';
-      }
+    }
+    
+    // Load file mappings if they exist
+    if (data.file_mappings) {
+      this.selectedDataFile = data.file_mappings.data_file || '';
+      this.selectedGroundTruthFile = data.file_mappings.ground_truth_file || '';
     }
   }
 
   populateModelFields(data: any) {
     const model = this.availableModels.find(m => String(m.modl_id) === String(data.modl_id));
-    if (model) {
-      this.itemName = model.modl_name || '';
-      this.itemDescription = model.modl_description || '';
-      this.itemAuthor = model.uploader || '';
-      this.itemVisibility = model.visibility || '';
-      this.itemUrl = model.url || '';
-      this.itemTimestamp = model.timestamp || '';
-      
-      // Load hyperparameters
-      if (this.selectedVersion && model.modl_version_info_list) {
-        const versionInfo = model.modl_version_info_list.find(
-          (v: any) => String(v.version.version_number) === this.selectedVersion
-        );
-        if (versionInfo) {
-          const hyperparameters = versionInfo.version?.hyperparameters || [];
-          if (hyperparameters && hyperparameters.length > 0) {
-            this.availableHyperparameters = hyperparameters;
-            this.showHyperparameterSection = true;
-          } else {
-            this.availableHyperparameters = [];
-            this.showHyperparameterSection = false;
-          }
+    if (model && this.selectedVersion && model.modl_version_info_list) {
+      const versionInfo = model.modl_version_info_list.find(
+        (v: any) => String(v.version.version_number) === this.selectedVersion
+      );
+      if (versionInfo) {
+        // Extract fields from version info structure (same as sidebar)
+        this.itemName = versionInfo.modl?.modl_name || versionInfo.model?.model_name || '';
+        this.itemDescription = versionInfo.description?.description_text || '';
+        this.itemAuthor = versionInfo.description?.author || '';
+        this.itemVisibility = versionInfo.metadata?.visibility || '';
+        this.itemUrl = versionInfo.metadata?.url || '';
+        this.itemTimestamp = versionInfo.metadata?.upload_timestamp || '';
+        
+        // Load hyperparameters
+        const hyperparameters = versionInfo.version?.hyperparameters || [];
+        if (hyperparameters && hyperparameters.length > 0) {
+          this.availableHyperparameters = hyperparameters;
+          this.showHyperparameterSection = true;
+        } else {
+          this.availableHyperparameters = [];
+          this.showHyperparameterSection = false;
         }
       }
-      
-      // Load hyperparameter sets if they exist
-      if (data.hyperparameter_sets) {
-        this.hyperparameterSets = data.hyperparameter_sets.map((set: any, index: number) => ({
-          ...set,
-          id: set.id || Date.now() + index,
-          collapsed: false
-        }));
-      } else {
-        this.hyperparameterSets = [];
-      }
+    }
+    
+    // Load hyperparameter sets if they exist
+    if (data.hyperparameter_sets) {
+      this.hyperparameterSets = data.hyperparameter_sets.map((set: any, index: number) => ({
+        ...set,
+        id: set.id || Date.now() + index,
+        collapsed: false
+      }));
+    } else {
+      this.hyperparameterSets = [];
     }
   }
 
   populateMetricFields(data: any) {
     const metric = this.availableMetrics.find(m => String(m.metric_id) === String(data.metric_id));
-    if (metric) {
-      this.itemName = metric.metric_name || '';
-      this.itemDescription = metric.metric_description || '';
-      this.itemAuthor = metric.uploader || '';
-      this.itemVisibility = metric.visibility || '';
-      this.itemUrl = metric.url || '';
-      this.itemTimestamp = metric.timestamp || '';
-      
-      // Load hyperparameters
-      if (this.selectedVersion && metric.metric_version_info_list) {
-        const versionInfo = metric.metric_version_info_list.find(
-          (v: any) => String(v.version.version_number) === this.selectedVersion
-        );
-        if (versionInfo) {
-          const hyperparameters = versionInfo.version?.hyperparameters || [];
-          if (hyperparameters && hyperparameters.length > 0) {
-            this.availableHyperparameters = hyperparameters;
-            this.showHyperparameterSection = true;
-          } else {
-            this.availableHyperparameters = [];
-            this.showHyperparameterSection = false;
-          }
+    if (metric && this.selectedVersion && metric.metric_version_info_list) {
+      const versionInfo = metric.metric_version_info_list.find(
+        (v: any) => String(v.version.version_number) === this.selectedVersion
+      );
+      if (versionInfo) {
+        // Extract fields from version info structure (same as sidebar)
+        this.itemName = versionInfo.metric?.metric_name || '';
+        this.itemDescription = versionInfo.description?.description_text || '';
+        this.itemAuthor = versionInfo.description?.author || '';
+        this.itemVisibility = versionInfo.metadata?.visibility || '';
+        this.itemUrl = versionInfo.metadata?.url || '';
+        this.itemTimestamp = versionInfo.metadata?.upload_timestamp || '';
+        
+        // Load hyperparameters
+        const hyperparameters = versionInfo.version?.hyperparameters || [];
+        if (hyperparameters && hyperparameters.length > 0) {
+          this.availableHyperparameters = hyperparameters;
+          this.showHyperparameterSection = true;
+        } else {
+          this.availableHyperparameters = [];
+          this.showHyperparameterSection = false;
         }
       }
-      
-      // Load hyperparameter sets if they exist
-      if (data.hyperparameter_sets) {
-        this.hyperparameterSets = data.hyperparameter_sets.map((set: any, index: number) => ({
-          ...set,
-          id: set.id || Date.now() + index,
-          collapsed: false
-        }));
-      } else {
-        this.hyperparameterSets = [];
-      }
+    }
+    
+    // Load hyperparameter sets if they exist
+    if (data.hyperparameter_sets) {
+      this.hyperparameterSets = data.hyperparameter_sets.map((set: any, index: number) => ({
+        ...set,
+        id: set.id || Date.now() + index,
+        collapsed: false
+      }));
+    } else {
+      this.hyperparameterSets = [];
     }
   }
 
@@ -986,6 +1096,10 @@ export class NodeEditorComponent implements OnInit {
 
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent) {
+    // Close ID dropdown when clicking outside
+    this.idDropdownOpen = false;
+    
+    // Close node menu when clicking outside
     if (this.showNodeMenu) {
       const menu = (event.target as Element).closest('.context-menu');
       if (!menu) {

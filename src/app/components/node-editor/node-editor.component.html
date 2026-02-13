@@ -282,17 +282,38 @@
         <label>
           {{ detailNode.type === 'dataset' ? 'Dataset ID:' : detailNode.type === 'processor' ? 'Processor ID:' : detailNode.type === 'model' ? 'Model ID:' : detailNode.type === 'metric' ? 'Metric ID:' : 'ID:' }}
         </label>
+        <!-- Native select for dataset (no task-based styling needed) -->
         <select 
+          *ngIf="detailNode.type === 'dataset' || detailNode.type === 'processor'"
           class="form-control" 
           [(ngModel)]="selectedId" 
           (change)="onIdSelect()">
           <option value="">Select ID</option>
           <option 
-            *ngFor="let option of detailNode.type === 'dataset' ? datasetOptions : detailNode.type === 'model' ? modelOptions : detailNode.type === 'metric' ? metricOptions : []" 
+            *ngFor="let option of datasetOptions" 
             [value]="option.id">
             {{ option.id }} - {{ option.name }}
           </option>
         </select>
+        <!-- Custom dropdown for model/metric so we can show task-match highlight in the list -->
+        <div class="custom-id-dropdown" *ngIf="detailNode.type === 'model' || detailNode.type === 'metric'" (click)="$event.stopPropagation()">
+          <button 
+            type="button"
+            class="form-control custom-id-dropdown-trigger"
+            (click)="openIdDropdown($event)">
+            <span class="custom-id-dropdown-label">{{ selectedIdLabel }}</span>
+            <span class="custom-id-dropdown-arrow">▼</span>
+          </button>
+          <div class="custom-id-dropdown-panel" *ngIf="idDropdownOpen">
+            <div 
+              class="custom-id-option"
+              [class.option-task-match]="option.matchesTask"
+              *ngFor="let option of idOptions"
+              (click)="selectIdOption(option.id, $event)">
+              {{ option.id }} - {{ option.name }}
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Version Selection -->
