@@ -564,6 +564,30 @@ export class SidebarComponent {
 
   onApplyItem() {
     if (this.currentItem && this.selectedId && this.selectedVersion) {
+      // Debug: log task id/version for model (and metric) when applying
+      if (this.selectedType === 'model' && this.currentItem?.data) {
+        const versionInfo = this.currentItem.data.modl_version_info_list?.find(
+          (v: any) => String(v.version?.version_number) === String(this.selectedVersion)
+        );
+        const tasks = versionInfo?.version?.tasks ?? this.currentItem.data?.version?.tasks ?? [];
+        console.debug('[Apply Model]', {
+          modelId: this.selectedId,
+          modelVersion: this.selectedVersion,
+          taskType: tasks.map((t: any) => ({ id: t.task_id ?? t.id, version: t.version ?? t.version_number, name: t.task_name }))
+        });
+      }
+      if (this.selectedType === 'metric' && this.currentItem?.data) {
+        const versionInfo = this.currentItem.data.metric_version_info_list?.find(
+          (v: any) => String(v.version?.version_number) === String(this.selectedVersion)
+        );
+        const tasks = versionInfo?.version?.tasks ?? this.currentItem.data?.version?.tasks ?? [];
+        console.debug('[Apply Metric]', {
+          metricId: this.selectedId,
+          metricVersion: this.selectedVersion,
+          taskType: tasks.map((t: any) => ({ id: t.task_id ?? t.id, version: t.version ?? t.version_number, name: t.task_name }))
+        });
+      }
+
       const applyData: any = {
         item: this.currentItem,
         type: this.selectedType,

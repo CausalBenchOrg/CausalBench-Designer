@@ -11,8 +11,17 @@ export class ExportDialogComponent {
   @Input() models: any[] = [];
   @Input() metrics: any[] = [];
   @Input() selectedTaskType = 'discovery.temporal';
-  
+  @Input() selectedTaskId = '';
+
   @Output() closeDialog = new EventEmitter<void>();
+
+  /** Match version task to selected task by task_name or task_id (e.g. Causal Discovery static/temporal) */
+  private taskMatches(task: any): boolean {
+    if (!this.selectedTaskType && !this.selectedTaskId) return false;
+    const byName = task.task_name && task.task_name === this.selectedTaskType;
+    const byId = this.selectedTaskId && String(task.task_id ?? task.id ?? '') === String(this.selectedTaskId);
+    return byName || byId;
+  }
 
   // Form fields
   name = '';
@@ -53,14 +62,11 @@ export class ExportDialogComponent {
       );
 
       if (versionInfo?.version?.tasks) {
-        return versionInfo.version.tasks.some((task: any) => 
-          task.task_name === this.selectedTaskType
-        );
+        return versionInfo.version.tasks.some((task: any) => this.taskMatches(task));
       }
 
-      // Fallback to checking direct version tasks
       const tasks = model.data?.version?.tasks || [];
-      return tasks.some((task: any) => task.task_name === this.selectedTaskType);
+      return tasks.some((task: any) => this.taskMatches(task));
     });
   }
 
@@ -82,14 +88,11 @@ export class ExportDialogComponent {
       );
 
       if (versionInfo?.version?.tasks) {
-        return versionInfo.version.tasks.some((task: any) => 
-          task.task_name === this.selectedTaskType
-        );
+        return versionInfo.version.tasks.some((task: any) => this.taskMatches(task));
       }
 
-      // Fallback to checking direct version tasks
       const tasks = metric.data?.version?.tasks || [];
-      return tasks.some((task: any) => task.task_name === this.selectedTaskType);
+      return tasks.some((task: any) => this.taskMatches(task));
     });
   }
 

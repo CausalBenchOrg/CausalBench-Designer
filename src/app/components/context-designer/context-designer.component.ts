@@ -17,13 +17,14 @@ export class ContextDesignerComponent implements OnInit {
   currentItem: any = null;
   currentItemType: 'dataset' | 'model' | 'metric' | null = null;
   selectedTaskType: string = '';
+  selectedTaskId: string = '';
 
   // Available items from API (for selection)
   availableDatasets: any[] = [];
   availableModels: any[] = [];
   availableMetrics: any[] = [];
   availableTasks: any[] = [];
-  
+
   // Loading states
   loadingDatasets = false;
   loadingModels = false;
@@ -380,8 +381,14 @@ export class ContextDesignerComponent implements OnInit {
     return `Item ${id}`;
   }
 
-  onTaskTypeChange(taskType: string) {
-    this.selectedTaskType = taskType;
+  onTaskTypeChange(event: { taskName: string; taskId: string } | string) {
+    if (typeof event === 'string') {
+      this.selectedTaskType = event;
+      this.selectedTaskId = '';
+    } else {
+      this.selectedTaskType = event.taskName;
+      this.selectedTaskId = event.taskId ?? '';
+    }
   }
 }
 

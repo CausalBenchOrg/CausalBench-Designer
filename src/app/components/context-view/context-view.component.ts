@@ -24,7 +24,7 @@ export class ContextViewComponent implements OnInit {
   @Output() itemSelected = new EventEmitter<any>();
   @Output() addModel = new EventEmitter<void>();
   @Output() addMetric = new EventEmitter<void>();
-  @Output() taskTypeChange = new EventEmitter<string>();
+  @Output() taskTypeChange = new EventEmitter<{ taskName: string; taskId: string }>();
 
   constructor(
     private apiService: ApiService,
@@ -35,53 +35,53 @@ export class ContextViewComponent implements OnInit {
     this.fetchTasks();
   }
 
+  /** Match model/metric version task to selected task by task_name or task_id (e.g. Causal Discovery uses id:1, version:1) */
+  private taskMatches(task: any): boolean {
+    if (!this.selectedTaskType && !this.selectedTaskId) return false;
+    const byName = task.task_name && task.task_name === this.selectedTaskType;
+    const byId = this.selectedTaskId && String(task.task_id ?? task.id ?? '') === String(this.selectedTaskId);
+    return byName || byId;
+  }
+
   get filteredModels(): any[] {
-    if (!this.selectedTaskType || !this.models) return [];
+    if ((!this.selectedTaskType && !this.selectedTaskId) || !this.models) return [];
     return this.models.filter(model => {
       // Show new models that don't have data yet
       if (!model.data || Object.keys(model.data).length === 0) {
         return true;
       }
 
-      // Check for tasks in different possible locations
       const versionInfo = model.data.modl_version_info_list?.find(
         (v: any) => String(v.version.version_number) === model.data.selected_version
       );
 
       if (versionInfo?.version?.tasks) {
-        return versionInfo.version.tasks.some((task: any) => 
-          task.task_name === this.selectedTaskType
-        );
+        return versionInfo.version.tasks.some((task: any) => this.taskMatches(task));
       }
 
-      // Fallback to checking the direct version tasks
       const tasks = model.data?.version?.tasks || [];
-      return tasks.some((task: any) => task.task_name === this.selectedTaskType);
+      return tasks.some((task: any) => this.taskMatches(task));
     });
   }
 
   get filteredMetrics(): any[] {
-    if (!this.selectedTaskType || !this.metrics) return [];
+    if ((!this.selectedTaskType && !this.selectedTaskId) || !this.metrics) return [];
     return this.metrics.filter(metric => {
       // Show new metrics that don't have data yet
       if (!metric.data || Object.keys(metric.data).length === 0) {
         return true;
       }
 
-      // Check for tasks in different possible locations
       const versionInfo = metric.data.metric_version_info_list?.find(
         (v: any) => String(v.version.version_number) === metric.data.selected_version
       );
 
       if (versionInfo?.version?.tasks) {
-        return versionInfo.version.tasks.some((task: any) => 
-          task.task_name === this.selectedTaskType
-        );
+        return versionInfo.version.tasks.some((task: any) => this.taskMatches(task));
       }
 
-      // Fallback to checking the direct version tasks
       const tasks = metric.data?.version?.tasks || [];
-      return tasks.some((task: any) => task.task_name === this.selectedTaskType);
+      return tasks.some((task: any) => this.taskMatches(task));
     });
   }
 
@@ -113,9 +113,16 @@ export class ContextViewComponent implements OnInit {
       if (this.taskVersions.length > 0) {
         this.selectedTaskVersion = this.taskVersions[0];
       }
-      this.taskTypeChange.emit(this.selectedTaskType);
+      console.debug('[Task type changed]', {
+        taskId: this.selectedTaskId,
+        taskVersion: this.selectedTaskVersion,
+        taskName: this.selectedTaskType
+      });
+      this.taskTypeChange.emit({ taskName: this.selectedTaskType, taskId: this.selectedTaskId });
     } else {
       this.selectedTaskType = '';
+      console.debug('[Task type changed]', { taskId: '', taskVersion: '', taskName: '' });
+      this.taskTypeChange.emit({ taskName: '', taskId: '' });
     }
   }
 
