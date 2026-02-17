@@ -8,7 +8,7 @@ import { TokenService } from '../../services/token.service';
   styleUrls: ['./context-designer.component.scss']
 })
 export class ContextDesignerComponent implements OnInit {
-  title = 'CausalBench GUI';
+  title = 'CausalBench+ Designer GUI';
   showHelp = false;
   showAbout = false;
   datasets: any[] = [];

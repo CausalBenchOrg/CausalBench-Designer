@@ -153,12 +153,7 @@ export class ExportDialogComponent {
 
     // Format the output
     let output = `# Created using CausalBench+ Designer v1.2a
-from causalbench.modules import Run
-from causalbench.modules.context import Context
-from causalbench.modules.dataset import Dataset
-from causalbench.modules.model import Model
-from causalbench.modules.metric import Metric
-from causalbench.modules.task import Task
+from causalbench.modules import Dataset, Model, Metric, Task, Context, Run
 
 context1: Context = Context.create(task=${this.getTaskExportExpression()},
    name='${this.name}',
