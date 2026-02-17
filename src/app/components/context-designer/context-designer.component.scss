@@ -1,0 +1,233 @@
+// Component-specific styles can be added here
+// Most styles are in the global styles.scss file 
+
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 4.5rem);
+  background-color: #f5f5f5;
+}
+
+.main-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.views-container {
+  display: flex;
+  flex: 1;
+  gap: 10px;
+  padding: 10px;
+  overflow: hidden;
+}
+
+app-dataset-view,
+app-model-view,
+app-metric-view {
+  flex: 1;
+  min-width: 0;
+}
+
+.view-panel {
+  background-color: white;
+  border: 2px solid #ccc;
+  border-radius: 5px;
+  padding: 15px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.title {
+  margin: 0 0 15px 0;
+  font-size: 18px;
+  font-weight: bold;
+  color: #333;
+  text-align: center;
+}
+
+.items-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.item {
+  background-color: #e6f3ff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.item:hover {
+  background-color: #d1e7ff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.item.selected {
+  background-color: #ffcc99;
+  border-color: #ff9900;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.item-content {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.item-name {
+  font-weight: bold;
+  font-size: 14px;
+  color: #333;
+}
+
+.item-id, .item-version {
+  font-size: 12px;
+  color: #666;
+}
+
+.item-status {
+  font-size: 12px;
+  color: #999;
+  font-style: italic;
+}
+
+.loading-state {
+  text-align: center;
+  color: #666;
+  padding: 20px;
+}
+
+.loading-state p {
+  margin: 5px 0;
+}
+
+.empty-state {
+  text-align: center;
+  color: #666;
+  padding: 20px;
+}
+
+.empty-state p {
+  margin: 5px 0;
+}
+
+.title-bar {
+  display: flex;
+  align-items: center;
+  height: 4.5rem;
+  background-color: #424242;
+  padding: 0 1rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+  z-index: 1001;
+}
+
+.logo {
+  height: 3rem;
+  width: auto;
+  margin-right: 1rem;
+  margin-top: 3px;
+}
+
+.app-title {
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: #fff;
+  letter-spacing: 0.02em;
+}
+
+.title-bar .help-btn,
+.title-bar .help-btn:visited {
+  background: #444;
+  border: none;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  margin-left: 0.5rem;
+  text-decoration: none;
+  transition: background 0.2s;
+  display: inline-block;
+}
+
+.title-bar .help-btn:hover,
+.title-bar .help-btn:focus {
+  background: #666;
+  color: #fff;
+}
+
+.title-bar .help-btn {
+  margin-left: auto;
+}
+
+// Help popup overlay styles
+.help-popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+}
+
+.help-popup {
+  background: #fff;
+  color: #222;
+  border-radius: 10px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+  padding: 2rem 2.5rem 1.5rem 2.5rem;
+  min-width: 320px;
+  max-width: 90vw;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  overflow-y: auto;
+}
+
+.help-popup h3 {
+  margin: 0 0 1rem 0;
+  color: #333;
+  font-size: 1.5rem;
+}
+
+.help-content {
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
+}
+
+.help-content p {
+  margin-bottom: 0.8rem;
+}
+
+.help-content a {
+  color: #007bff;
+  text-decoration: none;
+}
+
+.help-content a:hover {
+  text-decoration: underline;
+}
+
+.help-popup .btn {
+  align-self: flex-end;
+}
+
+.title-bar-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+

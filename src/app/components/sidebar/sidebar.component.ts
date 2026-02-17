@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, Input, Output, EventEmitter, HostListener } from '@angular/core';
 
 @Component({
   selector: 'app-sidebar',
@@ -19,7 +19,9 @@ export class SidebarComponent {
   @Input() currentDatasets: any[] = [];
   @Input() currentModels: any[] = [];
   @Input() currentMetrics: any[] = [];
-  
+  @Input() selectedTaskId = '';
+  @Input() selectedTaskType = '';
+
   @Output() itemSelected = new EventEmitter<any>();
   @Output() addDataset = new EventEmitter<void>();
   @Output() addModel = new EventEmitter<void>();
@@ -58,10 +60,10 @@ export class SidebarComponent {
   selectedGroundTruthFile = '';
   showDatasetFilesSection = false;
 
-  // Dropdown options
-  datasetOptions: { id: string, name: string }[] = [];
-  modelOptions: { id: string, name: string }[] = [];
-  metricOptions: { id: string, name: string }[] = [];
+  // Dropdown options (model/metric options include matchesTask for task-based styling)
+  datasetOptions: { id: string, name: string; matchesTask?: boolean }[] = [];
+  modelOptions: { id: string, name: string; matchesTask?: boolean }[] = [];
+  metricOptions: { id: string, name: string; matchesTask?: boolean }[] = [];
   versions: string[] = [];
 
   showExportDialog = false;
@@ -71,7 +73,15 @@ export class SidebarComponent {
     description: ''
   };
 
+  // Custom ID dropdown (for model/metric so we can style options with task-match highlight)
+  idDropdownOpen = false;
+
   constructor() {}
+
+  @HostListener('document:click')
+  onDocumentClick() {
+    this.idDropdownOpen = false;
+  }
 
   ngOnInit() {
     this.updateDropdownOptions();
@@ -82,14 +92,41 @@ export class SidebarComponent {
     this.updateCurrentItemInfo();
   }
 
-  updateDropdownOptions() {
-    // Extract unique IDs and names from available data
-    this.datasetOptions = this.getUniqueOptions(this.availableDatasets, 'dataset_id', 'dataset_name');
-    this.modelOptions = this.getUniqueOptions(this.availableModels, 'modl_id', 'modl_name');
-    this.metricOptions = this.getUniqueOptions(this.availableMetrics, 'metric_id', 'metric_name');
+  /** Match a task entry to the selected task (by task_name or task_id). */
+  private taskMatches(task: any): boolean {
+    if (!this.selectedTaskType && !this.selectedTaskId) return false;
+    const byName = task.task_name && task.task_name === this.selectedTaskType;
+    const byId = this.selectedTaskId && String(task.task_id ?? task.id ?? '') === String(this.selectedTaskId);
+    return byName || byId;
   }
 
-  getUniqueOptions(items: any[], idField: string, nameField: string): { id: string, name: string }[] {
+  /** True if this model has at least one version that matches the selected task. */
+  private modelMatchesSelectedTask(model: any): boolean {
+    const list = model.modl_version_info_list ?? model.data?.modl_version_info_list ?? [];
+    for (const v of list) {
+      const tasks = v.version?.tasks ?? v.tasks ?? [];
+      if (tasks.some((t: any) => this.taskMatches(t))) return true;
+    }
+    return false;
+  }
+
+  /** True if this metric has at least one version that matches the selected task. */
+  private metricMatchesSelectedTask(metric: any): boolean {
+    const list = metric.metric_version_info_list ?? metric.data?.metric_version_info_list ?? [];
+    for (const v of list) {
+      const tasks = v.version?.tasks ?? v.tasks ?? [];
+      if (tasks.some((t: any) => this.taskMatches(t))) return true;
+    }
+    return false;
+  }
+
+  updateDropdownOptions() {
+    this.datasetOptions = this.getUniqueOptions(this.availableDatasets, 'dataset_id', 'dataset_name');
+    this.modelOptions = this.getModelOptions();
+    this.metricOptions = this.getMetricOptions();
+  }
+
+  getUniqueOptions(items: any[], idField: string, nameField: string): { id: string, name: string; matchesTask?: boolean }[] {
     const uniqueItems = items.reduce((acc, item) => {
       const id = String(item[idField]);
       if (!acc.find((existing: { id: string, name: string }) => existing.id === id)) {
@@ -99,13 +136,63 @@ export class SidebarComponent {
         });
       }
       return acc;
-    }, [] as { id: string, name: string }[]);
+    }, [] as { id: string, name: string; matchesTask?: boolean }[]);
     
     return uniqueItems.sort((a: { id: string, name: string }, b: { id: string, name: string }) => {
       const numA = parseInt(a.id);
       const numB = parseInt(b.id);
       return isNaN(numA) || isNaN(numB) ? a.name.localeCompare(b.name) : numA - numB;
     });
+  }
+
+  getModelOptions(): { id: string; name: string; matchesTask?: boolean }[] {
+    const withMatch = this.availableModels.map((m: any) => ({
+      id: String(m.modl_id),
+      name: m.modl_name || `Model ${m.modl_id}`,
+      matchesTask: this.modelMatchesSelectedTask(m)
+    }));
+    const byId = new Map<string, { id: string; name: string; matchesTask: boolean }>();
+    withMatch.forEach(o => {
+      const existing = byId.get(o.id);
+      if (!existing || o.matchesTask) byId.set(o.id, { ...o, matchesTask: (existing?.matchesTask ?? false) || (o.matchesTask ?? false) });
+    });
+    const list = Array.from(byId.values());
+    const sort = (a: { id: string; name: string }, b: { id: string; name: string }) => {
+      const numA = parseInt(a.id);
+      const numB = parseInt(b.id);
+      return isNaN(numA) || isNaN(numB) ? a.name.localeCompare(b.name) : numA - numB;
+    };
+    list.sort((a, b) => {
+      if (a.matchesTask && !b.matchesTask) return -1;
+      if (!a.matchesTask && b.matchesTask) return 1;
+      return sort(a, b);
+    });
+    return list;
+  }
+
+  getMetricOptions(): { id: string; name: string; matchesTask?: boolean }[] {
+    const withMatch = this.availableMetrics.map((m: any) => ({
+      id: String(m.metric_id),
+      name: m.metric_name || `Metric ${m.metric_id}`,
+      matchesTask: this.metricMatchesSelectedTask(m)
+    }));
+    const byId = new Map<string, { id: string; name: string; matchesTask: boolean }>();
+    withMatch.forEach(o => {
+      const existing = byId.get(o.id);
+      if (!existing || o.matchesTask) byId.set(o.id, { ...o, matchesTask: (existing?.matchesTask ?? false) || (o.matchesTask ?? false) });
+    });
+    const list = Array.from(byId.values());
+    const sort = (a: { id: string; name: string }, b: { id: string; name: string }) => {
+      const numA = parseInt(a.id);
+      const numB = parseInt(b.id);
+      return isNaN(numA) || isNaN(numB) ? a.name.localeCompare(b.name) : numA - numB;
+    };
+    list.sort((a, b) => {
+      if (a.matchesTask && !b.matchesTask) return -1;
+      if (!a.matchesTask && b.matchesTask) return 1;
+      return sort(a, b);
+    });
+    return list;
   }
 
   updateCurrentItemInfo() {
@@ -243,6 +330,33 @@ export class SidebarComponent {
     console.log('ID selected:', this.selectedId, 'Type:', this.selectedType);
     this.updateVersions();
     this.updateInfo();
+  }
+
+  get idOptions(): { id: string; name: string; matchesTask?: boolean }[] {
+    if (this.selectedType === 'dataset') return this.datasetOptions;
+    if (this.selectedType === 'model') return this.modelOptions;
+    if (this.selectedType === 'metric') return this.metricOptions;
+    return [];
+  }
+
+  get selectedIdLabel(): string {
+    if (!this.selectedId) return 'Select ID';
+    const opt = this.idOptions.find(o => o.id === this.selectedId);
+    return opt ? `${opt.id} - ${opt.name}` : this.selectedId;
+  }
+
+  openIdDropdown(event: Event) {
+    event.stopPropagation();
+    if (this.selectedType === 'model' || this.selectedType === 'metric') {
+      this.idDropdownOpen = !this.idDropdownOpen;
+    }
+  }
+
+  selectIdOption(id: string, event: Event) {
+    event.stopPropagation();
+    this.selectedId = id;
+    this.idDropdownOpen = false;
+    this.onIdSelect();
   }
 
   onVersionSelect() {
@@ -564,6 +678,30 @@ export class SidebarComponent {
 
   onApplyItem() {
     if (this.currentItem && this.selectedId && this.selectedVersion) {
+      // Debug: log task id/version for model (and metric) when applying
+      if (this.selectedType === 'model' && this.currentItem?.data) {
+        const versionInfo = this.currentItem.data.modl_version_info_list?.find(
+          (v: any) => String(v.version?.version_number) === String(this.selectedVersion)
+        );
+        const tasks = versionInfo?.version?.tasks ?? this.currentItem.data?.version?.tasks ?? [];
+        console.debug('[Apply Model]', {
+          modelId: this.selectedId,
+          modelVersion: this.selectedVersion,
+          taskType: tasks.map((t: any) => ({ id: t.task_id ?? t.id, version: t.version ?? t.version_number, name: t.task_name }))
+        });
+      }
+      if (this.selectedType === 'metric' && this.currentItem?.data) {
+        const versionInfo = this.currentItem.data.metric_version_info_list?.find(
+          (v: any) => String(v.version?.version_number) === String(this.selectedVersion)
+        );
+        const tasks = versionInfo?.version?.tasks ?? this.currentItem.data?.version?.tasks ?? [];
+        console.debug('[Apply Metric]', {
+          metricId: this.selectedId,
+          metricVersion: this.selectedVersion,
+          taskType: tasks.map((t: any) => ({ id: t.task_id ?? t.id, version: t.version ?? t.version_number, name: t.task_name }))
+        });
+      }
+
       const applyData: any = {
         item: this.currentItem,
         type: this.selectedType,

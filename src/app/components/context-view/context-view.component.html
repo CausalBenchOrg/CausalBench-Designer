@@ -1,12 +1,20 @@
 <div class="context-header-bar">
   <label for="taskTypeDropdown">Task Type:</label>
   <select id="taskTypeDropdown" 
-          [(ngModel)]="selectedTaskType" 
-          (change)="onTaskTypeChange($event)"
+          [(ngModel)]="selectedTaskId" 
+          (ngModelChange)="onTaskIdChange($event)"
           [disabled]="loadingTasks"
           class="task-type-dropdown">
-    <option value="" disabled>{{ loadingTasks ? 'Loading tasks...' : 'Please select a task:' }}</option>
-    <option *ngFor="let taskId of tasks" [value]="taskId">{{ taskId }}</option>
+    <option value="">{{ loadingTasks ? 'Loading tasks...' : 'Please select a task:' }}</option>
+    <option *ngFor="let task of availableTasks" [value]="task.task_id">{{ task.task_name }}</option>
+  </select>
+  <select *ngIf="selectedTaskId && taskVersions.length > 0"
+          id="taskVersionDropdown"
+          [(ngModel)]="selectedTaskVersion"
+          (change)="onTaskVersionChange($event)"
+          class="task-version-dropdown">
+    <option value="">Select version</option>
+    <option *ngFor="let ver of taskVersions" [value]="ver">{{ ver }}</option>
   </select>
 </div>
 <div class="context-views-row">

@@ -11,8 +11,18 @@ export class ExportDialogComponent {
   @Input() models: any[] = [];
   @Input() metrics: any[] = [];
   @Input() selectedTaskType = 'discovery.temporal';
-  
+  @Input() selectedTaskId = '';
+  @Input() selectedTaskVersion = '';
+
   @Output() closeDialog = new EventEmitter<void>();
+
+  /** Match version task to selected task by task_name or task_id (e.g. Causal Discovery static/temporal) */
+  private taskMatches(task: any): boolean {
+    if (!this.selectedTaskType && !this.selectedTaskId) return false;
+    const byName = task.task_name && task.task_name === this.selectedTaskType;
+    const byId = this.selectedTaskId && String(task.task_id ?? task.id ?? '') === String(this.selectedTaskId);
+    return byName || byId;
+  }
 
   // Form fields
   name = '';
@@ -35,6 +45,13 @@ export class ExportDialogComponent {
     this.closeDialog.emit();
   }
 
+  /** Returns the task expression for export: Task(module_id=X, version=Y) using selected task id/version. */
+  getTaskExportExpression(): string {
+    const id = this.selectedTaskId || '1';
+    const version = this.selectedTaskVersion || '1';
+    return `Task(module_id=${id}, version=${version})`;
+  }
+
   private getFilteredModels() {
     return this.models.filter(model => {
       // First check if it's a configured model
@@ -53,14 +70,11 @@ export class ExportDialogComponent {
       );
 
       if (versionInfo?.version?.tasks) {
-        return versionInfo.version.tasks.some((task: any) => 
-          task.task_name === this.selectedTaskType
-        );
+        return versionInfo.version.tasks.some((task: any) => this.taskMatches(task));
       }
 
-      // Fallback to checking direct version tasks
       const tasks = model.data?.version?.tasks || [];
-      return tasks.some((task: any) => task.task_name === this.selectedTaskType);
+      return tasks.some((task: any) => this.taskMatches(task));
     });
   }
 
@@ -82,14 +96,11 @@ export class ExportDialogComponent {
       );
 
       if (versionInfo?.version?.tasks) {
-        return versionInfo.version.tasks.some((task: any) => 
-          task.task_name === this.selectedTaskType
-        );
+        return versionInfo.version.tasks.some((task: any) => this.taskMatches(task));
       }
 
-      // Fallback to checking direct version tasks
       const tasks = metric.data?.version?.tasks || [];
-      return tasks.some((task: any) => task.task_name === this.selectedTaskType);
+      return tasks.some((task: any) => this.taskMatches(task));
     });
   }
 
@@ -141,14 +152,10 @@ export class ExportDialogComponent {
     }
 
     // Format the output
-    let output = `# Created using CausalBench Designer v1.0g
-from causalbench.modules import Run
-from causalbench.modules.context import Context
-from causalbench.modules.dataset import Dataset
-from causalbench.modules.model import Model
-from causalbench.modules.metric import Metric
+    let output = `# Created using CausalBench+ Designer v1.2a
+from causalbench.modules import Dataset, Model, Metric, Task, Context, Run
 
-context1: Context = Context.create(task='${this.selectedTaskType}',
+context1: Context = Context.create(task=${this.getTaskExportExpression()},
    name='${this.name}',
    description='${this.description}',
    datasets=[
@@ -173,15 +180,15 @@ context1: Context = Context.create(task='${this.selectedTaskType}',
       // If model has hyperparameter sets, create entries for each set
       if (model.hyperparameterSets && model.hyperparameterSets.length > 0) {
         for (const hyperparamSet of model.hyperparameterSets) {
-          // Format hyperparameters
           const hyperparamEntries = [];
-          for (const [paramName, paramValue] of Object.entries(hyperparamSet.parameters as Record<string, {value: any, data_type: string}>)) {
-            if (paramValue !== undefined && paramValue !== null && paramValue.value !== '') {
-              if (paramValue.data_type == 'string') {
-                hyperparamEntries.push(`'${paramName}': '${paramValue.value}'`);
-              }
-              else {
-                hyperparamEntries.push(`'${paramName}': ${paramValue.value}`);
+          for (const [paramName, paramValue] of Object.entries(hyperparamSet.parameters as Record<string, { value: any; data_type: string }>)) {
+            const scalar = paramValue && typeof paramValue === 'object' && 'value' in paramValue ? paramValue.value : paramValue;
+            if (scalar !== undefined && scalar !== null && scalar !== '') {
+              const isString = paramValue && typeof paramValue === 'object' && paramValue.data_type === 'string';
+              if (isString || typeof scalar === 'string') {
+                hyperparamEntries.push(`'${paramName}': '${String(scalar).replace(/'/g, "\\'")}'`);
+              } else {
+                hyperparamEntries.push(`'${paramName}': ${scalar}`);
               }
             }
           }
@@ -201,27 +208,28 @@ context1: Context = Context.create(task='${this.selectedTaskType}',
 
     output += '],\n   metrics=[';
 
-    // Add metrics with hyperparameters
+    // Add metrics with hyperparameters (same structure as models: parameters[name] = { value, data_type })
     const metricEntries = [];
     for (const metric of allMetrics) {
       // If metric has hyperparameter sets, create entries for each set
       if (metric.hyperparameterSets && metric.hyperparameterSets.length > 0) {
         for (const hyperparamSet of metric.hyperparameterSets) {
-          // Format hyperparameters
           const hyperparamEntries = [];
-          for (const [paramName, paramValue] of Object.entries(hyperparamSet.parameters)) {
-            if (paramValue !== undefined && paramValue !== null && paramValue !== '') {
-              hyperparamEntries.push(`'${paramName}': '${paramValue}'`);
+          for (const [paramName, paramValue] of Object.entries(hyperparamSet.parameters as Record<string, { value: any; data_type: string }>)) {
+            const scalar = paramValue && typeof paramValue === 'object' && 'value' in paramValue ? paramValue.value : paramValue;
+            if (scalar !== undefined && scalar !== null && scalar !== '') {
+              const isString = paramValue && typeof paramValue === 'object' && paramValue.data_type === 'string';
+              if (isString || typeof scalar === 'string') {
+                hyperparamEntries.push(`'${paramName}': '${String(scalar).replace(/'/g, "\\'")}'`);
+              } else {
+                hyperparamEntries.push(`'${paramName}': ${scalar}`);
+              }
             }
           }
-          
-          const hyperparamConfig = hyperparamEntries.length > 0 ? 
-            `{${hyperparamEntries.join(', ')}}` : '{}';
-          
+          const hyperparamConfig = hyperparamEntries.length > 0 ? `{${hyperparamEntries.join(', ')}}` : '{}';
           metricEntries.push(`(Metric(module_id=${metric.id}, version=${metric.version}), ${hyperparamConfig})`);
         }
       } else {
-        // No hyperparameters defined
         metricEntries.push(`(Metric(module_id=${metric.id}, version=${metric.version}), {})`);
       }
     }
@@ -229,9 +237,13 @@ context1: Context = Context.create(task='${this.selectedTaskType}',
     output += metricEntries.join(', ');
 
     output += `])
-
+# Uncomment if you'd like to publish the context to the CausalBench+ server.
+# context1.publish()
 run: Run = context1.execute()
-print(run)`;
+print(run)
+# Uncomment if you'd like to publish the run to the CausalBench+ server (requires the context to be published first).
+# run.publish()`;
+
 
     // Create and download the file
     this.downloadFile(output, 'context_export.py');
