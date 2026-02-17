@@ -18,6 +18,7 @@ export class ContextDesignerComponent implements OnInit {
   currentItemType: 'dataset' | 'model' | 'metric' | null = null;
   selectedTaskType: string = '';
   selectedTaskId: string = '';
+  selectedTaskVersion: string = '';
 
   // Available items from API (for selection)
   availableDatasets: any[] = [];
@@ -381,13 +382,15 @@ export class ContextDesignerComponent implements OnInit {
     return `Item ${id}`;
   }
 
-  onTaskTypeChange(event: { taskName: string; taskId: string } | string) {
+  onTaskTypeChange(event: { taskName: string; taskId: string; taskVersion?: string } | string) {
     if (typeof event === 'string') {
       this.selectedTaskType = event;
       this.selectedTaskId = '';
+      this.selectedTaskVersion = '';
     } else {
       this.selectedTaskType = event.taskName;
       this.selectedTaskId = event.taskId ?? '';
+      this.selectedTaskVersion = event.taskVersion ?? '';
     }
   }
 }

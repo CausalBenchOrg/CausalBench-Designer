@@ -469,6 +469,8 @@
     [models]="getExportModels()"
     [metrics]="getExportMetrics()"
     [selectedTaskType]="selectedTaskName || selectedTaskId || ''"
+    [selectedTaskId]="selectedTaskId"
+    [selectedTaskVersion]="selectedTaskVersion"
     (closeDialog)="onCloseExportDialog()">
   </app-export-dialog>
 </div>

@@ -24,7 +24,7 @@ export class ContextViewComponent implements OnInit {
   @Output() itemSelected = new EventEmitter<any>();
   @Output() addModel = new EventEmitter<void>();
   @Output() addMetric = new EventEmitter<void>();
-  @Output() taskTypeChange = new EventEmitter<{ taskName: string; taskId: string }>();
+  @Output() taskTypeChange = new EventEmitter<{ taskName: string; taskId: string; taskVersion: string }>();
 
   constructor(
     private apiService: ApiService,
@@ -118,16 +118,18 @@ export class ContextViewComponent implements OnInit {
         taskVersion: this.selectedTaskVersion,
         taskName: this.selectedTaskType
       });
-      this.taskTypeChange.emit({ taskName: this.selectedTaskType, taskId: this.selectedTaskId });
+      this.taskTypeChange.emit({ taskName: this.selectedTaskType, taskId: this.selectedTaskId, taskVersion: this.selectedTaskVersion });
     } else {
       this.selectedTaskType = '';
+      this.selectedTaskVersion = '';
       console.debug('[Task type changed]', { taskId: '', taskVersion: '', taskName: '' });
-      this.taskTypeChange.emit({ taskName: '', taskId: '' });
+      this.taskTypeChange.emit({ taskName: '', taskId: '', taskVersion: '' });
     }
   }
 
   onTaskVersionChange(event: any) {
     this.selectedTaskVersion = event.target.value;
+    this.taskTypeChange.emit({ taskName: this.selectedTaskType, taskId: this.selectedTaskId, taskVersion: this.selectedTaskVersion });
   }
 
   onAddModel() {
