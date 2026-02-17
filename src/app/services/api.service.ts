@@ -193,7 +193,16 @@ export class ApiService {
     "user_id": "1"
   };
 
-  private readonly TASKS_REQUEST_BODY = {};
+  private readonly TASKS_REQUEST_BODY = {
+    "showOnlyUserData": false,
+    "searchText": "",
+    "sortField": "",
+    "sortState": "",
+    "pageNumber": 0,
+    "pageSize": 20,
+    "filters": [],
+    "user_id": "1"
+  };
 
   constructor(
     private http: HttpClient
@@ -276,16 +285,26 @@ export class ApiService {
     );
   }
 
-  // Get tasks from API - expects { data: { tasks: [...] } }
+  // Get tasks from API - returns full task descriptors (task_id, task_name, task_version_info_list)
+  // Same pattern as datasets, models, metrics
   getTasks(token: string): Observable<any[]> {
-    return this.http.post<ApiResponse<any[]>>(`${this.baseUrl}/tasks/fetch`, this.TASKS_REQUEST_BODY, { headers: this.getHeaders(token) })
+    return this.http.post<ApiResponse<{ task_descriptors: any[] }>>(`${this.baseUrl}/tasks/fetch`, this.TASKS_REQUEST_BODY, { headers: this.getHeaders(token) })
       .pipe(
         map(response => {
-          if (response.success) {
-            return response.data.map(task => task.task_id);
-          } else {
-            throw new Error(response.message);
+          if (response?.data?.task_descriptors) {
+            return response.data.task_descriptors.map((t: any) => {
+              if (typeof t !== 'object' || t === null) {
+                return { task_id: String(t), task_name: String(t), task_version_info_list: [] };
+              }
+              return {
+                task_id: t.task_id ?? t.id ?? t.taskId,
+                task_name: t.task_name ?? t.name ?? t.taskName ?? String(t.task_id ?? t.id ?? ''),
+                task_version_info_list: t.task_version_info_list ?? t.version_info_list ?? t.versions ?? []
+              };
+            });
           }
+          console.warn('Unexpected task response format:', response);
+          return [];
         }),
         catchError(error => {
           console.error('Error fetching tasks:', error);
@@ -293,6 +312,8 @@ export class ApiService {
         })
       );
   }
+
+
 
   // Alternative endpoints if your API uses different paths
   // getDatasetsYaml(): Observable<any> {

@@ -1,0 +1,477 @@
+<div class="node-editor-container">
+  <div class="title-bar">
+    <a href="https://designer.causalbench.org" target="_blank" rel="noopener noreferrer">
+      <img src="assets/logo.png" alt="Logo" class="logo">
+    </a>
+    <span class="app-title">CausalBench Designer - Node Editor</span>
+    <div class="title-bar-actions">
+      <a class="help-btn" routerLink="/">Context Designer</a>
+      <a class="help-btn" href="https://causalbench.org" target="_blank" rel="noopener noreferrer">CausalBench</a>
+      <a class="help-btn" href="https://docs.causalbench.org" target="_blank" rel="noopener noreferrer">Documentation</a>
+    </div>
+  </div>
+
+  <div class="editor-toolbar">
+    <div class="toolbar-section task-section">
+      <span class="toolbar-label">Task:</span>
+      <select 
+        class="task-select" 
+        [(ngModel)]="selectedTaskId"
+        (change)="onTaskIdSelect()"
+        [disabled]="loadingTasks">
+        <option value="">{{ loadingTasks ? 'Loading tasks...' : 'Select Task' }}</option>
+        <option *ngFor="let task of availableTasks" [value]="task.task_id">{{ task.task_name }}</option>
+      </select>
+      <select 
+        *ngIf="selectedTaskId && taskVersions.length > 0"
+        class="task-version-select" 
+        [(ngModel)]="selectedTaskVersion"
+        (change)="onTaskVersionSelect()">
+        <option value="">Select Version</option>
+        <option *ngFor="let version of taskVersions" [value]="version">{{ version }}</option>
+      </select>
+      <span *ngIf="selectedTaskId && taskVersions.length === 0" class="task-info">{{ selectedTaskName || selectedTaskId }}</span>
+    </div>
+    <div class="toolbar-section">
+      <span class="toolbar-label">Add Node:</span>
+      <button class="toolbar-btn dataset-btn" (click)="createNode('dataset')" title="Add Dataset Node">
+        Dataset
+      </button>
+      <button class="toolbar-btn processor-btn" (click)="createNode('processor')" title="Add Processor Node">
+        Processor
+      </button>
+      <button class="toolbar-btn model-btn" (click)="createNode('model')" title="Add Model Node">
+        Model
+      </button>
+      <button class="toolbar-btn metric-btn" (click)="createNode('metric')" title="Add Metric Node">
+        Metric
+      </button>
+    </div>
+    <div class="toolbar-section">
+      |
+    </div>
+    
+    <div class="toolbar-section" *ngIf="selectedNode">
+      <button class="toolbar-btn danger-btn" (click)="deleteNode(selectedNode!)">Delete Selected</button>
+    </div>
+    <div class="toolbar-section">
+      <button class="toolbar-btn success-btn" (click)="onExportContext()">Export Context Template</button>
+    </div>
+    <div class="toolbar-section">
+      |
+    </div>
+    
+    <div class="toolbar-section">
+      <span class="toolbar-label">Controls:</span>
+      <span class="toolbar-hint">Ctrl+Click to pan | Scroll to zoom | Right-click to add node | Click ports to connect</span>
+    </div>
+  </div>
+
+  <div 
+    class="canvas-container" 
+    #container
+    (mousedown)="onCanvasMouseDown($event)"
+    (contextmenu)="onCanvasContextMenu($event)"
+    (wheel)="onCanvasWheel($event)">
+    
+    <svg 
+      #canvas
+      class="graph-canvas"
+      [attr.width]="containerRef?.nativeElement?.clientWidth || 1920"
+      [attr.height]="containerRef?.nativeElement?.clientHeight || 1080">
+      
+      <!-- Grid background -->
+      <defs>
+        <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+          <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#e0e0e0" stroke-width="0.5"/>
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#grid)" [attr.transform]="'translate(' + canvasOffset.x + ',' + canvasOffset.y + ') scale(' + canvasScale + ')'"/>
+      
+      <!-- Edges -->
+      <g class="edges-layer">
+        <path
+          *ngFor="let edge of edges"
+          [attr.d]="getEdgePath(edge)"
+          class="edge"
+          stroke="#666"
+          stroke-width="2"
+          fill="none"
+          marker-end="url(#arrowhead)"
+          (click)="deleteEdge(edge)"
+          style="cursor: pointer;"/>
+        
+        <!-- Temporary edge while connecting -->
+        <path
+          *ngIf="tempEdgeEnd"
+          [attr.d]="getTempEdgePath()"
+          class="edge temp-edge"
+          stroke="#3498db"
+          stroke-width="2"
+          stroke-dasharray="5,5"
+          fill="none"/>
+      </g>
+      
+      <!-- Arrow marker -->
+      <defs>
+        <marker
+          id="arrowhead"
+          markerWidth="10"
+          markerHeight="10"
+          refX="9"
+          refY="3"
+          orient="auto">
+          <polygon points="0 0, 10 3, 0 6" fill="#666"/>
+        </marker>
+      </defs>
+      
+      <!-- Nodes -->
+      <g class="nodes-layer" [attr.transform]="'translate(' + canvasOffset.x + ',' + canvasOffset.y + ') scale(' + canvasScale + ')'">
+        <g
+          *ngFor="let node of nodes"
+          class="node-group"
+          [class.selected]="selectedNode?.id === node.id"
+          [attr.transform]="'translate(' + node.x + ',' + node.y + ')'">
+          
+          <!-- Node body -->
+          <rect
+            class="node-body"
+            [attr.fill]="getNodeColor(node.type)"
+            [attr.width]="node.width"
+            [attr.height]="node.height"
+            rx="5"
+            stroke="#333"
+            [attr.stroke-width]="selectedNode?.id === node.id ? 3 : 1"
+            (mousedown)="onNodeMouseDown($event, node)"
+            style="cursor: move;"/>
+          
+          <!-- Node title -->
+          <text
+            class="node-title"
+            [attr.x]="node.width / 2"
+            y="20"
+            text-anchor="middle"
+            fill="white"
+            font-weight="bold"
+            font-size="13"
+            pointer-events="none">
+            {{ getNodeDisplayTitle(node) }}
+          </text>
+          <!-- Node subtitle (version) -->
+          <text
+            *ngIf="node.data && node.data.selected_version"
+            class="node-subtitle"
+            [attr.x]="node.width / 2"
+            y="38"
+            text-anchor="middle"
+            fill="rgba(255, 255, 255, 0.9)"
+            font-size="11"
+            pointer-events="none">
+            Version {{ node.data.selected_version }}
+          </text>
+          
+          <!-- Hyperparameter configuration count -->
+          <text
+            *ngIf="(node.type === 'model' || node.type === 'metric' || node.type === 'processor') && node.data && node.data.hyperparameter_sets && node.data.hyperparameter_sets.length > 0"
+            class="node-hyperparameter-info"
+            [attr.x]="node.width / 2"
+            y="55"
+            text-anchor="middle"
+            fill="rgba(255, 255, 255, 0.85)"
+            font-size="10"
+            pointer-events="none">
+            {{ node.data.hyperparameter_sets.length }} {{ node.data.hyperparameter_sets.length === 1 ? 'configuration' : 'configurations' }}
+          </text>
+          
+          <!-- Input ports -->
+          <g class="input-ports">
+            <g
+              *ngFor="let port of node.inputPorts"
+              class="port-group"
+              [attr.transform]="'translate(' + (port.x - node.x) + ',' + (port.y - node.y) + ')'">
+              <circle
+                class="port"
+                r="6"
+                fill="#fff"
+                stroke="#333"
+                stroke-width="2"
+                [class.connecting]="connectingPort?.portId === port.id"
+                (mousedown)="onPortMouseDown($event, node, port)"
+                style="cursor: crosshair;"/>
+              <text
+                class="port-label"
+                x="-10"
+                y="4"
+                text-anchor="end"
+                fill="#333"
+                font-size="11"
+                pointer-events="none">
+                {{ port.name }}
+              </text>
+            </g>
+          </g>
+          
+          <!-- Output ports -->
+          <g class="output-ports">
+            <g
+              *ngFor="let port of node.outputPorts"
+              class="port-group"
+              [attr.transform]="'translate(' + (port.x - node.x) + ',' + (port.y - node.y) + ')'">
+              <circle
+                class="port"
+                r="6"
+                fill="#fff"
+                stroke="#333"
+                stroke-width="2"
+                [class.connecting]="connectingPort?.portId === port.id"
+                (mousedown)="onPortMouseDown($event, node, port)"
+                style="cursor: crosshair;"/>
+              <text
+                class="port-label"
+                x="10"
+                y="4"
+                text-anchor="start"
+                fill="#333"
+                font-size="11"
+                pointer-events="none">
+                {{ port.name }}
+              </text>
+            </g>
+          </g>
+        </g>
+      </g>
+    </svg>
+  </div>
+
+  <!-- Node creation context menu -->
+  <div
+    *ngIf="showNodeMenu"
+    class="context-menu"
+    [style.left.px]="nodeMenuPosition.x"
+    [style.top.px]="nodeMenuPosition.y"
+    (click)="$event.stopPropagation()"
+    (mousedown)="$event.stopPropagation()">
+    <div class="context-menu-item" (click)="createNode('dataset'); $event.stopPropagation()">
+      <span class="menu-icon" style="background: #9b59b6;"></span>
+      Add Dataset
+    </div>
+    <div class="context-menu-item" (click)="createNode('processor'); $event.stopPropagation()">
+      <span class="menu-icon" style="background: #e67e22;"></span>
+      Add Processor
+    </div>
+    <div class="context-menu-item" (click)="createNode('model'); $event.stopPropagation()">
+      <span class="menu-icon" style="background: #3498db;"></span>
+      Add Model
+    </div>
+    <div class="context-menu-item" (click)="createNode('metric'); $event.stopPropagation()">
+      <span class="menu-icon" style="background: #2ecc71;"></span>
+      Add Metric
+    </div>
+  </div>
+
+  <!-- Node Detail Panel -->
+  <div class="detail-panel" *ngIf="showDetailPanel && detailNode">
+    <div class="detail-panel-header">
+      <h3>Configure {{ detailNode.type === 'processor' ? (getProcessorLabel(detailNode) || 'Processor') : getNodeTypeLabel(detailNode.type) }}</h3>
+      <button class="close-btn" (click)="closeDetailPanel()">×</button>
+    </div>
+    
+    <div class="detail-panel-content">
+      <!-- ID Selection -->
+      <div class="form-group">
+        <label>
+          {{ detailNode.type === 'dataset' ? 'Dataset ID:' : detailNode.type === 'processor' ? 'Processor ID:' : detailNode.type === 'model' ? 'Model ID:' : detailNode.type === 'metric' ? 'Metric ID:' : 'ID:' }}
+        </label>
+        <!-- Native select for dataset (no task-based styling needed) -->
+        <select 
+          *ngIf="detailNode.type === 'dataset' || detailNode.type === 'processor'"
+          class="form-control" 
+          [(ngModel)]="selectedId" 
+          (change)="onIdSelect()">
+          <option value="">Select ID</option>
+          <option 
+            *ngFor="let option of datasetOptions" 
+            [value]="option.id">
+            {{ option.id }} - {{ option.name }}
+          </option>
+        </select>
+        <!-- Custom dropdown for model/metric so we can show task-match highlight in the list -->
+        <div class="custom-id-dropdown" *ngIf="detailNode.type === 'model' || detailNode.type === 'metric'" (click)="$event.stopPropagation()">
+          <button 
+            type="button"
+            class="form-control custom-id-dropdown-trigger"
+            (click)="openIdDropdown($event)">
+            <span class="custom-id-dropdown-label">{{ selectedIdLabel }}</span>
+            <span class="custom-id-dropdown-arrow">▼</span>
+          </button>
+          <div class="custom-id-dropdown-panel" *ngIf="idDropdownOpen">
+            <div 
+              class="custom-id-option"
+              [class.option-task-match]="option.matchesTask"
+              *ngFor="let option of idOptions"
+              (click)="selectIdOption(option.id, $event)">
+              {{ option.id }} - {{ option.name }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Version Selection -->
+      <div class="form-group">
+        <label>Version:</label>
+        <select 
+          class="form-control" 
+          [(ngModel)]="selectedVersion" 
+          (change)="onVersionSelect()"
+          [disabled]="!selectedId">
+          <option value="">Select Version</option>
+          <option 
+            *ngFor="let version of versions" 
+            [value]="version">
+            {{ version }}
+          </option>
+        </select>
+      </div>
+
+      <!-- Information Fields -->
+      <div class="info-fields">
+        <div class="form-group">
+          <label>Name:</label>
+          <input type="text" class="form-control" [value]="itemName" readonly>
+        </div>
+
+        <div class="form-group">
+          <label>Description:</label>
+          <textarea class="form-control" [value]="itemDescription" readonly rows="3"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Uploader:</label>
+          <input type="text" class="form-control" [value]="itemAuthor" readonly>
+        </div>
+
+        <div class="form-group">
+          <label>Visibility:</label>
+          <input type="text" class="form-control" [value]="itemVisibility" readonly>
+        </div>
+
+        <div class="form-group">
+          <label>URL:</label>
+          <input type="text" class="form-control" [value]="itemUrl" readonly>
+        </div>
+
+        <div class="form-group">
+          <label>Timestamp:</label>
+          <input type="text" class="form-control" [value]="itemTimestamp" readonly>
+        </div>
+      </div>
+
+      <!-- Dataset File Mapping -->
+      <div class="file-mapping-section" *ngIf="detailNode.type === 'dataset' && availableDatasetFiles.length > 0">
+        <h4>File Mapping</h4>
+        <div class="form-group">
+          <label><b>Data File:</b></label>
+          <select 
+            class="form-control" 
+            [(ngModel)]="selectedDataFile">
+            <option value="">Select data file</option>
+            <option 
+              *ngFor="let file of availableDatasetFiles" 
+              [value]="file.filename">
+              {{ file.filename }} ({{ file.filetype }})
+            </option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label><b>Ground Truth File:</b></label>
+          <select 
+            class="form-control" 
+            [(ngModel)]="selectedGroundTruthFile">
+            <option value="">Select ground truth file</option>
+            <option 
+              *ngFor="let file of availableDatasetFiles" 
+              [value]="file.filename">
+              {{ file.filename }} ({{ file.filetype }})
+            </option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Hyperparameter Section -->
+      <div class="hyperparameter-section" *ngIf="showHyperparameterSection">
+        <h4>Hyperparameter Configuration</h4>
+        <p class="hyperparameter-info">Available parameters: {{ availableHyperparameters.length }}</p>
+        
+        <!-- Hyperparameter Sets -->
+        <div class="parameter-sets">
+          <div class="set-header">
+            <h5>Configurations</h5>
+            <button class="btn btn-sm btn-primary" (click)="addHyperparameterSet()">Add Configuration</button>
+          </div>
+          
+          <div class="parameter-set" *ngFor="let set of hyperparameterSets; let i = index">
+            <div class="set-header">
+              <h6>Set {{ i + 1 }}</h6>
+              <div>
+                <button class="btn btn-sm btn-secondary" (click)="toggleHyperparameterSetCollapse(set.id)">
+                  <span *ngIf="!set.collapsed">&#9660; Collapse</span>
+                  <span *ngIf="set.collapsed">&#9654; Expand</span>
+                </button>
+                <button class="btn btn-sm btn-danger" (click)="removeHyperparameterSet(set.id)">Remove</button>
+              </div>
+            </div>
+            <div class="parameter-inputs" *ngIf="!set.collapsed">
+              <div class="form-group" *ngFor="let param of availableHyperparameters">
+                <label class="parameter-name" [title]="getParameterTooltip(param)"><b>{{ param.hyperparameter_name }}</b>
+                  <span *ngIf="param.allowed_values && param.allowed_values.length > 0" class="allowed-values">
+                    [{{ param.allowed_values.join(', ') }}]
+                  </span>
+                </label>
+                <div class="input-reset-wrapper">
+                  <input 
+                    type="text" 
+                    class="form-control" 
+                    [placeholder]="param.hyperparameter_value"
+                    [value]="set.parameters[param.hyperparameter_name]?.value || ''"
+                    (input)="onHyperparameterInput($event, set.id, param.hyperparameter_name)"
+                    [class.duplicate]="isDuplicateHyperparameter(set.id, param.hyperparameter_name, set.parameters[param.hyperparameter_name]?.value)"
+                  >
+                  <button class="btn btn-xs btn-reset" type="button" (click)="resetHyperparameterToDefault(set.id, param.hyperparameter_name)" title="Reset to default">
+                    &#8635;
+                  </button>
+                </div>
+                <small class="form-text text-muted">{{ param.hyperparameter_description }}</small>
+              </div>
+            </div>
+          </div>
+          
+          <div class="no-sets" *ngIf="hyperparameterSets.length === 0">
+            <p>No hyperparameter sets defined. Click "Add Configuration" to create one.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Apply Button -->
+      <div class="detail-panel-actions">
+        <button class="btn btn-primary" (click)="onApplyConfiguration()" [disabled]="!selectedId || !selectedVersion">
+          Apply Configuration
+        </button>
+        <button class="btn btn-secondary" (click)="closeDetailPanel()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Export Dialog -->
+  <app-export-dialog
+    [showDialog]="showExportDialog"
+    [datasets]="getExportDatasets()"
+    [models]="getExportModels()"
+    [metrics]="getExportMetrics()"
+    [selectedTaskType]="selectedTaskName || selectedTaskId || ''"
+    [selectedTaskId]="selectedTaskId"
+    [selectedTaskVersion]="selectedTaskVersion"
+    (closeDialog)="onCloseExportDialog()">
+  </app-export-dialog>
+</div>
+
