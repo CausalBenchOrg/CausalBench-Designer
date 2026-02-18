@@ -35,52 +35,52 @@ export class ContextViewComponent implements OnInit {
     this.fetchTasks();
   }
 
-  /** Match model/metric version task to selected task by task_name or task_id (e.g. Causal Discovery uses id:1, version:1) */
+  /** Match when the module's task (version.tasks entry) task id equals selected task_id. Use task_id/taskId only; never task.id (can be model id). Supports task as object or primitive id. */
   private taskMatches(task: any): boolean {
-    if (!this.selectedTaskType && !this.selectedTaskId) return false;
-    const byName = task.task_name && task.task_name === this.selectedTaskType;
-    const byId = this.selectedTaskId && String(task.task_id ?? task.id ?? '') === String(this.selectedTaskId);
-    return byName || byId;
+    if (!this.selectedTaskId) return false;
+    const taskId = typeof task === 'object' && task != null
+      ? (task.task_id ?? task.taskId ?? '')
+      : String(task ?? '');
+    return String(taskId) === String(this.selectedTaskId);
   }
 
   get filteredModels(): any[] {
-    if ((!this.selectedTaskType && !this.selectedTaskId) || !this.models) return [];
+    if (!this.selectedTaskId || !this.models) return [];
     return this.models.filter(model => {
       // Show new models that don't have data yet
       if (!model.data || Object.keys(model.data).length === 0) {
         return true;
       }
 
-      const versionInfo = model.data.modl_version_info_list?.find(
-        (v: any) => String(v.version.version_number) === model.data.selected_version
+      // API: modl_version_info_list[].version.tasks[].task_id
+      const versionList = model.data.modl_version_info_list ?? model.modl_version_info_list ?? [];
+      const versionInfo = versionList.find(
+        (v: any) => String(v.version?.version_number) === String(model.data?.selected_version)
       );
-
       if (versionInfo?.version?.tasks) {
         return versionInfo.version.tasks.some((task: any) => this.taskMatches(task));
       }
-
-      const tasks = model.data?.version?.tasks || [];
+      const tasks = model.data?.version?.tasks ?? model.version?.tasks ?? [];
       return tasks.some((task: any) => this.taskMatches(task));
     });
   }
 
   get filteredMetrics(): any[] {
-    if ((!this.selectedTaskType && !this.selectedTaskId) || !this.metrics) return [];
+    if (!this.selectedTaskId || !this.metrics) return [];
     return this.metrics.filter(metric => {
       // Show new metrics that don't have data yet
       if (!metric.data || Object.keys(metric.data).length === 0) {
         return true;
       }
-
-      const versionInfo = metric.data.metric_version_info_list?.find(
-        (v: any) => String(v.version.version_number) === metric.data.selected_version
+      // API: metric_version_info_list[].version.tasks[].task_id
+      const versionList = metric.data.metric_version_info_list ?? metric.metric_version_info_list ?? [];
+      const versionInfo = versionList.find(
+        (v: any) => String(v.version?.version_number) === String(metric.data?.selected_version)
       );
-
       if (versionInfo?.version?.tasks) {
         return versionInfo.version.tasks.some((task: any) => this.taskMatches(task));
       }
-
-      const tasks = metric.data?.version?.tasks || [];
+      const tasks = metric.data?.version?.tasks ?? metric.version?.tasks ?? [];
       return tasks.some((task: any) => this.taskMatches(task));
     });
   }

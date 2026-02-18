@@ -16,12 +16,13 @@ export class ExportDialogComponent {
 
   @Output() closeDialog = new EventEmitter<void>();
 
-  /** Match version task to selected task by task_name or task_id (e.g. Causal Discovery static/temporal) */
+  /** Match when the module's task (version.tasks entry) task id equals selected task_id. Use task_id/taskId only; never task.id (can be model id). Supports task as object or primitive id. */
   private taskMatches(task: any): boolean {
-    if (!this.selectedTaskType && !this.selectedTaskId) return false;
-    const byName = task.task_name && task.task_name === this.selectedTaskType;
-    const byId = this.selectedTaskId && String(task.task_id ?? task.id ?? '') === String(this.selectedTaskId);
-    return byName || byId;
+    if (!this.selectedTaskId) return false;
+    const taskId = typeof task === 'object' && task != null
+      ? (task.task_id ?? task.taskId ?? '')
+      : String(task ?? '');
+    return String(taskId) === String(this.selectedTaskId);
   }
 
   // Form fields
