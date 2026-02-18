@@ -92,19 +92,20 @@ export class SidebarComponent {
     this.updateCurrentItemInfo();
   }
 
-  /** Match a task entry to the selected task (by task_name or task_id). */
+  /** Match when the module's task (version.tasks entry) task id equals selected task_id. Use task_id/taskId only; never task.id (can be model id). Supports task as object or primitive id. */
   private taskMatches(task: any): boolean {
-    if (!this.selectedTaskType && !this.selectedTaskId) return false;
-    const byName = task.task_name && task.task_name === this.selectedTaskType;
-    const byId = this.selectedTaskId && String(task.task_id ?? task.id ?? '') === String(this.selectedTaskId);
-    return byName || byId;
+    if (!this.selectedTaskId) return false;
+    const taskId = typeof task === 'object' && task != null
+      ? (task.task_id ?? task.taskId ?? '')
+      : String(task ?? '');
+    return String(taskId) === String(this.selectedTaskId);
   }
 
   /** True if this model has at least one version that matches the selected task. */
   private modelMatchesSelectedTask(model: any): boolean {
     const list = model.modl_version_info_list ?? model.data?.modl_version_info_list ?? [];
     for (const v of list) {
-      const tasks = v.version?.tasks ?? v.tasks ?? [];
+      const tasks = v.version?.tasks ?? [];
       if (tasks.some((t: any) => this.taskMatches(t))) return true;
     }
     return false;
@@ -114,7 +115,7 @@ export class SidebarComponent {
   private metricMatchesSelectedTask(metric: any): boolean {
     const list = metric.metric_version_info_list ?? metric.data?.metric_version_info_list ?? [];
     for (const v of list) {
-      const tasks = v.version?.tasks ?? v.tasks ?? [];
+      const tasks = v.version?.tasks ?? [];
       if (tasks.some((t: any) => this.taskMatches(t))) return true;
     }
     return false;
