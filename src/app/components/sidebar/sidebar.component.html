@@ -1,285 +1,38 @@
-<div class="sidebar">
-  <!-- Action Buttons -->
-  <div class="action-buttons">
-    <button class="btn btn-primary" (click)="onAddDataset()">Add Dataset</button>
-    <button class="btn btn-primary" (click)="onAddModel()">Add Model</button>
-    <button class="btn btn-primary" (click)="onAddMetric()">Add Metric</button>
-    <button class="btn btn-danger" (click)="onRemoveItem()">Remove Module</button>
-    <button class="btn btn-success" (click)="onExportContext()">Export Context Template</button>
-  </div>
-
-  <!-- Search Section -->
-  <div class="search-section">
-    <h3>Search Items</h3>
-    <div class="search-container">
-      <div class="search-input-wrapper">
-        <input 
-          type="text" 
-          class="form-control search-input" 
-          placeholder="Search by item name..."
-          [(ngModel)]="searchQuery"
-          (input)="onSearchInput()"
-          (focus)="onSearchInput()">
-        <button 
-          class="btn btn-clear" 
-          (click)="clearSearch()"
-          *ngIf="searchQuery">
-          ✖
-        </button>
+<div class="entry-editor" *ngIf="working as item">
+  <div class="section-heading"><div><p class="eyebrow">CONFIGURE {{ item.kind | uppercase }}</p><h2>{{ item.descriptor.name }}</h2><p class="muted small">Registry #{{ item.descriptor.id }} · version {{ item.descriptor.version }} · {{ item.descriptor.provenance }} metadata</p></div><button (click)="cancelEdit.emit()" aria-label="Cancel configuration">✕</button></div>
+  <p class="muted small">Changes apply only when you choose Apply. Each explicit model configuration creates a separate scenario for every dataset.</p>
+  <button class="text-button" (click)="editMetadata.emit(item.descriptor)">Review / complete component metadata</button>
+  <ng-container *ngIf="item.kind === 'dataset'; else configurationEditor">
+    <h3>Task input → dataset alias</h3><p class="small muted">One alias may supply multiple inputs. Select aliases from this exact dataset version.</p>
+    <p class="error-box" *ngIf="!task?.contract">Task input contract unknown. Complete the task metadata to author named mappings.</p>
+    <p class="error-box" *ngIf="item.descriptor.files === undefined">Dataset aliases unknown. Complete component metadata using its manifest.</p>
+    <div class="mapping-row" *ngFor="let input of inputs; trackBy: trackName"><label [for]="'mapping-' + input.name"><code>{{ input.name }}</code><small>{{ input.type }}</small></label><select [id]="'mapping-' + input.name" [ngModel]="item.mapping[input.name] || ''" (ngModelChange)="setMapping(input.name, $event)"><option value="">Select an alias…</option><option *ngIf="missingAlias(input.name)" [value]="item.mapping[input.name]">{{ item.mapping[input.name] }} · saved alias, metadata unresolved</option><option *ngFor="let file of item.descriptor.files || []" [value]="file.alias">{{ file.alias }} · {{ file.format || 'format unknown' }}{{ file.path ? ' · ' + file.path : '' }}</option></select></div>
+    <div *ngFor="let name of staleMappings" class="error-box"><p>{{ task?.contract ? 'Saved mapping is not declared by the current task:' : 'Saved mapping — task contract unknown:' }} <code>{{ name }}</code></p><label [for]="'saved-mapping-' + name">Saved alias for {{ name }}</label><input [id]="'saved-mapping-' + name" [ngModel]="item.mapping[name]" (ngModelChange)="setMapping(name, $event)"><button (click)="removeMapping(name)">Remove mapping</button></div>
+  </ng-container>
+  <ng-template #configurationEditor>
+    <p class="error-box" *ngIf="match !== 'match'">Task compatibility: {{ match }}. This entry needs an exact task ID and version match before export.</p>
+    <p class="error-box" *ngIf="item.descriptor.parameters === undefined">Parameter declarations unknown. Supply the manifest hyperparameters; use an empty object when none exist.</p>
+    <div class="configuration" *ngFor="let config of item.configurations; trackBy: trackConfiguration; let i = index">
+      <div class="section-heading"><h3>Configuration {{ i + 1 }}</h3><button (click)="removeConfiguration(config)" [disabled]="item.configurations.length === 1" [attr.aria-label]="'Remove configuration ' + (i + 1)">Remove</button></div>
+      <label [for]="'config-label-' + config.id">Label (optional, designer only)</label><input [id]="'config-label-' + config.id" [(ngModel)]="config.label" placeholder="e.g. Lower significance threshold">
+      <p class="muted small" *ngIf="!parameters.length && !unknownOverrides(config).length">Uses component defaults. An empty override dictionary is exported.</p>
+      <div class="parameter" *ngFor="let param of parameters; trackBy: trackName">
+        <div class="parameter-heading"><label class="check-label"><input type="checkbox" [checked]="hasOverride(config, param.name)" (change)="toggleOverride(config, param.name, param.declaration)">Override <code>{{ param.name }}</code></label><span class="badge">{{ param.declaration.data }}</span></div>
+        <p class="small muted">Default: <code>{{ defaultLabel(param.declaration) }}</code><span *ngIf="param.declaration.description"> · {{ param.declaration.description }}</span></p>
+        <ng-container *ngIf="hasOverride(config, param.name)">
+          <label class="check-label small"><input type="checkbox" [checked]="isNull(config, param.name)" (change)="toggleNull(config, param.name, param.declaration)">Explicit null</label>
+          <ng-container *ngIf="!isNull(config, param.name)">
+            <label class="sr-only" [for]="fieldKey(config, param.name)">{{ param.name }} override, configuration {{ i + 1 }}</label>
+            <select *ngIf="controlType(param.declaration) === 'boolean'" [id]="fieldKey(config, param.name)" [ngModel]="config.overrides[param.name]" (ngModelChange)="setValue(config, param.name, param.declaration, $event)"><option [ngValue]="true">true</option><option [ngValue]="false">false</option></select>
+            <input *ngIf="controlType(param.declaration) === 'number'" [id]="fieldKey(config, param.name)" inputmode="decimal" [ngModel]="raw[fieldKey(config, param.name)]" (ngModelChange)="setValue(config, param.name, param.declaration, $event)" [attr.aria-invalid]="!!errors[fieldKey(config, param.name)]">
+            <textarea *ngIf="controlType(param.declaration) === 'text' || controlType(param.declaration) === 'json'" [id]="fieldKey(config, param.name)" [ngModel]="raw[fieldKey(config, param.name)]" (ngModelChange)="setValue(config, param.name, param.declaration, $event)" rows="2" [attr.aria-invalid]="!!errors[fieldKey(config, param.name)]" [attr.placeholder]="controlType(param.declaration) === 'json' ? 'Enter a JSON value' : 'Text, including empty or multiline values'"></textarea>
+          </ng-container>
+          <p class="error-text small" role="alert" *ngIf="errors[fieldKey(config, param.name)]">{{ errors[fieldKey(config, param.name)] }}</p>
+        </ng-container>
       </div>
-      
-      <!-- Search Results Dropdown -->
-      <div class="search-results" *ngIf="showSearchResults">
-        <div 
-          class="search-result-item" 
-          *ngFor="let result of searchResults"
-          (click)="onSearchResultSelect(result)">
-          <div class="result-header">
-            <span class="result-name">{{ result.name }}</span>
-            <span class="result-type"
-              [ngClass]="{
-                'badge-dataset': result.type === 'dataset',
-                'badge-model': result.type === 'model',
-                'badge-metric': result.type === 'metric'
-              }"
-            >{{ result.type }}</span>
-          </div>
-          <div class="result-description" *ngIf="result.description">
-            {{ result.description }}
-          </div>
-          <div class="result-id">ID: {{ result.id }}</div>
-        </div>
-      </div>
+      <div class="error-box" *ngFor="let name of unknownOverrides(config)"><p>Saved override: <code>{{ name }}</code> · declaration unknown</p><label [for]="'saved-' + fieldKey(config, name)">Saved {{ name }} override, configuration {{ i + 1 }} (JSON)</label><textarea [id]="'saved-' + fieldKey(config, name)" class="code-input" [ngModel]="raw[fieldKey(config, name)]" (ngModelChange)="setSavedOverride(config, name, $event)" rows="2" [attr.aria-invalid]="!!errors[fieldKey(config, name)]"></textarea><p class="small" role="alert" *ngIf="errors[fieldKey(config, name)]">{{ errors[fieldKey(config, name)] }}</p><button (click)="removeOverride(config, name)">Remove unknown override</button></div>
     </div>
-  </div>
-
-  <!-- Query and Information Section -->
-  <div class="query-section" *ngIf="currentItem">
-    <h3>Query and Information</h3>
-    
-    <!-- ID Selection -->
-    <div class="form-group">
-      <label>{{ selectedType === 'dataset' ? 'Dataset ID:' : selectedType === 'model' ? 'Model ID:' : selectedType === 'metric' ? 'Metric ID:' : 'ID:' }}</label>
-      <!-- Native select for dataset (no task-based styling needed) -->
-      <select 
-        *ngIf="selectedType === 'dataset' || !selectedType"
-        class="form-control id-select"
-        [(ngModel)]="selectedId" 
-        (change)="onIdSelect()"
-        [disabled]="!selectedType">
-        <option value="">Select ID</option>
-        <option 
-          *ngFor="let option of datasetOptions" 
-          [value]="option.id">
-          {{ option.id }} - {{ option.name }}
-        </option>
-      </select>
-      <!-- Custom dropdown for model/metric so we can show task-match highlight in the list -->
-      <div class="custom-id-dropdown" *ngIf="(selectedType === 'model' || selectedType === 'metric') && selectedType" (click)="$event.stopPropagation()">
-        <button 
-          type="button"
-          class="form-control custom-id-dropdown-trigger"
-          [disabled]="!selectedType"
-          (click)="openIdDropdown($event)">
-          <span class="custom-id-dropdown-label">{{ selectedIdLabel }}</span>
-          <span class="custom-id-dropdown-arrow">▼</span>
-        </button>
-        <div class="custom-id-dropdown-panel" *ngIf="idDropdownOpen">
-          <div 
-            class="custom-id-option"
-            [class.option-task-match]="option.matchesTask"
-            *ngFor="let option of idOptions"
-            (click)="selectIdOption(option.id, $event)">
-            {{ option.id }} - {{ option.name }}
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Version Selection -->
-    <div class="form-group">
-      <label>Version:</label>
-      <select 
-        class="form-control" 
-        [(ngModel)]="selectedVersion" 
-        (change)="onVersionSelect()"
-        [disabled]="!selectedId">
-        <option value="">Select Version</option>
-        <option 
-          *ngFor="let version of versions" 
-          [value]="version">
-          {{ version }}
-        </option>
-      </select>
-    </div>
-
-    <!-- Information Fields -->
-    <div class="info-fields">
-      <div class="form-group">
-        <label>Name:</label>
-        <input type="text" class="form-control" [value]="itemName" readonly>
-      </div>
-
-      <div class="form-group">
-        <label>Description:</label>
-        <textarea class="form-control" [value]="itemDescription" readonly rows="3"></textarea>
-      </div>
-
-      <div class="form-group">
-        <label>Uploader:</label>
-        <input type="text" class="form-control" [value]="itemAuthor" readonly>
-      </div>
-
-      <div class="form-group">
-        <label>Visibility:</label>
-        <input type="text" class="form-control" [value]="itemVisibility" readonly>
-      </div>
-
-      <div class="form-group">
-        <label>URL:</label>
-        <input type="text" class="form-control" [value]="itemUrl" readonly>
-      </div>
-
-      <div class="form-group">
-        <label>Timestamp:</label>
-        <input type="text" class="form-control" [value]="itemTimestamp" readonly>
-      </div>
-    </div>
-
-    <!-- Dataset File Mapping Section -->
-    <div class="dataset-files-section" *ngIf="showDatasetFilesSection && selectedType === 'dataset'">
-      <h4>Dataset File Mapping</h4>
-      <p class="files-info">Available files: {{ availableDatasetFiles.length }}</p>
-      
-      <div class="file-mappings">
-        <div class="form-group">
-          <label><b>Data File:</b></label>
-          <select 
-            class="form-control" 
-            [(ngModel)]="selectedDataFile" 
-            (change)="onDataFileSelect()">
-            <option value="">Select data file</option>
-            <option 
-              *ngFor="let file of availableDatasetFiles" 
-              [value]="file.filename">
-              {{ getFileDisplayName(file) }}
-            </option>
-          </select>
-        </div>
-        
-        <div class="form-group">
-          <label><b>Ground Truth File:</b></label>
-          <select 
-            class="form-control" 
-            [(ngModel)]="selectedGroundTruthFile" 
-            (change)="onGroundTruthFileSelect()">
-            <option value="">Select ground truth file</option>
-            <option 
-              *ngFor="let file of availableDatasetFiles" 
-              [value]="file.filename">
-              {{ getFileDisplayName(file) }}
-            </option>
-          </select>
-        </div>
-      </div>
-    </div>
-
-    <!-- Hyperparameter Section -->
-    <div class="hyperparameter-section" *ngIf="showHyperparameterSection">
-      <h4>Hyperparameter Configuration</h4>
-      <p class="hyperparameter-info">Available parameters: {{ availableHyperparameters.length }}</p>
-      
-      <!-- Hyperparameter Sets -->
-      <div class="parameter-sets">
-        <div class="set-header">
-          <h5>Configurations</h5>
-          <button class="btn btn-sm btn-primary" (click)="addHyperparameterSet()">Add Configuration</button>
-        </div>
-        
-        <div class="parameter-set" *ngFor="let set of hyperparameterSets; let i = index">
-          <div class="set-header">
-            <h6>Set {{ i + 1 }}</h6>
-            <div>
-              <button class="btn btn-sm btn-secondary" (click)="toggleHyperparameterSetCollapse(set.id)">
-                <span *ngIf="!set.collapsed">&#9660; Collapse</span>
-                <span *ngIf="set.collapsed">&#9654; Expand</span>
-              </button>
-              <button class="btn btn-sm btn-danger" (click)="removeHyperparameterSet(set.id)">Remove</button>
-            </div>
-          </div>
-          <div class="parameter-inputs" *ngIf="!set.collapsed">
-            <div class="form-group" *ngFor="let param of availableHyperparameters">
-              <label class="parameter-name" [title]="getParameterTooltip(param)"><b>{{ param.hyperparameter_name }}</b>
-                <span *ngIf="param.allowed_values && param.allowed_values.length > 0" class="allowed-values">
-                  [{{ param.allowed_values.join(', ') }}]
-                </span>
-              </label>
-              <div class="input-reset-wrapper">
-                <input 
-                  type="text" 
-                  class="form-control" 
-                  [placeholder]="param.hyperparameter_value"
-                  [value]="set.parameters[param.hyperparameter_name]?.value || ''"
-                  (input)="onHyperparameterInput($event, set.id, param.hyperparameter_name)"
-                  [class.duplicate]="isDuplicateHyperparameter(set.id, param.hyperparameter_name, set.parameters[param.hyperparameter_name]?.value)"
-                >
-                <button class="btn btn-xs btn-reset" type="button" (click)="resetHyperparameterToDefault(set.id, param.hyperparameter_name)" title="Reset to default">
-                  &#8635;
-                </button>
-              </div>
-              <small class="form-text text-muted">{{ param.hyperparameter_description }}</small>
-            </div>
-          </div>
-        </div>
-        
-        <div class="no-sets" *ngIf="hyperparameterSets.length === 0">
-          <p>No hyperparameter sets defined. Click "Add Set" to create one.</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Apply Button -->
-    <button 
-      class="btn btn-primary apply-btn" 
-      (click)="onApplyItem()"
-      [disabled]="!selectedId || !selectedVersion">
-      Apply
-    </button>
-  </div>
-
-  <!-- Placeholder when no item is selected -->
-  <div class="placeholder" *ngIf="!currentItem">
-    <p>Select an item to configure</p>
-  </div>
+    <button (click)="addConfiguration()">+ Add explicit configuration</button><p class="small muted">Values are used as entered. Range expressions are not expanded. Repeated values across configurations are allowed.</p>
+  </ng-template>
+  <div class="actions editor-actions"><button class="danger" (click)="removeEntry.emit(item)">Remove entry</button><span></span><button (click)="cancelEdit.emit()">Cancel</button><button class="primary" (click)="apply()" [disabled]="hasErrors">Apply to draft</button></div>
 </div>
-
-<!-- Export Dialog -->
-<div class="modal-overlay" *ngIf="showExportDialog" (click)="hideExport()">
-  <div class="modal-content" (click)="$event.stopPropagation()">
-    <h3>Export Context</h3>
-    
-    <div class="form-group">
-      <label>Task Type:</label>
-      <select class="form-control" [(ngModel)]="exportData.taskType">
-        <!-- REMOVED MANUALLY, TASKS ARE LOADED FROM API and selected on the task type selector. -->
-        <!-- <option value="discovery.temporal">discovery.temporal</option>
-        <option value="discovery.static">discovery.static</option> -->
-      </select>
-    </div>
-
-    <div class="form-group">
-      <label>Name:</label>
-      <input type="text" class="form-control" [(ngModel)]="exportData.name">
-    </div>
-
-    <div class="form-group">
-      <label>Description:</label>
-      <input type="text" class="form-control" [(ngModel)]="exportData.description">
-    </div>
-
-    <div class="modal-actions">
-      <button class="btn btn-primary" (click)="doExport()">Export</button>
-      <button class="btn btn-danger" (click)="hideExport()">Cancel</button>
-    </div>
-  </div>
-</div> 

@@ -1,101 +1,73 @@
-<div class="title-bar">
-  <a href="https://designer.causalbench.org" target="_blank" rel="noopener noreferrer">
-    <img src="assets/logo.png" alt="Logo" class="logo">
-  </a>
-  <span class="app-title">CausalBench+ Designer v1.2a</span>
-  <div class="title-bar-actions">
-    <!-- <a class="help-btn node-editor-btn" routerLink="/node-editor" style="background: #3498db; font-weight: bold;">
-      Blueprint Node Editor (Experimental)
-    </a> -->
-    <a class="help-btn" href="https://causalbench.org" target="_blank" rel="noopener noreferrer">CausalBench+</a>
-    <button class="help-btn" (click)="showHelp = true">Help</button>
-    <a class="help-btn" href="https://docs.causalbench.org" target="_blank" rel="noopener noreferrer">Documentation</a>
+<header class="app-header">
+  <a class="brand" routerLink="/"><img src="assets/logo.png" alt="CausalBench"><span>CausalBench <strong>Designer</strong></span></a>
+  <nav aria-label="Designer views">
+    <a routerLink="/" [attr.aria-current]="!blueprintMode ? 'page' : null">Context</a>
+    <a routerLink="/node-editor" [attr.aria-current]="blueprintMode ? 'page' : null">Blueprint <span class="experimental-nav">Experimental</span></a>
+    <a href="https://docs.causalbench.org" target="_blank" rel="noopener noreferrer">Documentation ↗</a>
+  </nav>
+  <button class="header-action" (click)="showOpenContext = true">Open context</button>
+  <button class="theme-toggle" [attr.aria-label]="theme.dark ? 'Switch to light theme' : 'Switch to dark theme'" (click)="theme.toggle()"><span aria-hidden="true">{{ theme.dark ? '☀' : '☾' }}</span>{{ theme.dark ? 'Light theme' : 'Dark theme' }}</button>
+  <span class="version">CB 0.2.5</span>
+</header>
+<main class="designer">
+  <div class="page-heading">
+    <div><p class="eyebrow">BENCHMARK WORKSPACE</p><h1>{{ blueprintMode ? 'Blueprint editor' : 'Design a context' }}</h1><p class="muted">Select a task, map dataset aliases, and compare explicit model configurations. Execute the recipe locally in Python.</p></div>
+    <div><button class="primary" (click)="showExport = true" [disabled]="editing !== null || (blueprintMode && blueprint.unconfiguredCount > 0)">Review &amp; export</button><p class="small muted" *ngIf="editing">Apply or cancel the open configuration first.</p><p class="small muted" *ngIf="blueprintMode && blueprint.unconfiguredCount">Configure or remove {{ blueprint.unconfiguredCount }} unconfigured canvas nodes before exporting.</p></div>
   </div>
-</div>
-
-<!-- About Popup -->
-<div class="help-popup-overlay" *ngIf="showAbout" (click)="showAbout = false">
-  <div class="help-popup" (click)="$event.stopPropagation()">
-    <h3>About</h3>
-    <div class="help-content">
-      <p><b>CausalBench+ Designer</b> is a context design tool for CausalBench+.</p>
-      <p>Version 1.2a</p>
-      <p>Visit <a href="https://causalbench.org" target="_blank">causalbench.org</a> for more information.</p>
-    </div>
-    <button class="btn btn-primary" (click)="showAbout = false">Close</button>
-  </div>
-</div>
-
-<!-- Help Popup -->
-<div class="help-popup-overlay" *ngIf="showHelp" (click)="showHelp = false">
-  <div class="help-popup" (click)="$event.stopPropagation()">
-    <h3>Help</h3>
-    <div class="help-content">
-      <p>CausalBench+ Designer is a tool for designing contexts to be used in CausalBench+. It allows you to create and edit contexts, and to export them to a variety of formats.</p>
-      <p>To add a dataset, click the "Add Dataset" button and select the dataset you want to add.</p>
-      <p>To add a model, click the "Add Model" button and select the model you want to add.</p>
-      <p>To add a metric, click the "Add Metric" button and select the metric you want to add.</p>
-      <p>After creating the context, use the "Export Context Template" button to export the context to a template file, which can be executed in CausalBench.</p>
-      <p>For any further questions, please contact us at <a href="mailto:support@causalbench.org">support&#64;causalbench.org</a>.</p>
-    </div>
-    <button class="btn btn-primary" (click)="showHelp = false">Close</button>
-  </div>
-</div>
-
-<div class="app-container">
-  <!-- Token Input Component -->
-  <!-- <app-token-input></app-token-input> -->
-
-  <!-- Main Content -->
-  <div class="main-content">
-    <!-- Sidebar -->
-    <app-sidebar
-      [availableDatasets]="availableDatasets"
-      [availableModels]="availableModels"
-      [availableMetrics]="availableMetrics"
-      [currentItem]="currentItem"
-      [currentItemType]="currentItemType"
-      [currentDatasets]="datasets"
-      [currentModels]="models"
-      [currentMetrics]="metrics"
-      [selectedTaskId]="selectedTaskId"
-      [selectedTaskType]="selectedTaskType"
-      (addDataset)="onAddDataset()"
-      (addModel)="onAddModel()"
-      (addMetric)="onAddMetric()"
-      (addItemWithData)="onAddItemWithData($event)"
-      (removeItem)="onRemoveItem()"
-      (exportContext)="onExportContext()"
-      (applyItem)="onApplyItem($event)">
-    </app-sidebar>
-
-    <!-- Views Container -->
-    <div class="views-container">
-      <app-context-view
-        [datasets]="datasets"
-        [models]="models"
-        [metrics]="metrics"
-        [loadingDatasets]="loadingDatasets"
-        [loadingModels]="loadingModels"
-        [loadingMetrics]="loadingMetrics"
-        (itemSelected)="onItemSelected($event)"
-        (addModel)="onAddModel()"
-        (addMetric)="onAddMetric()"
-        (taskTypeChange)="onTaskTypeChange($event)">
-      </app-context-view>
+  <div class="workspace">
+    <aside class="catalog card" aria-label="Component catalog">
+      <h2>Component catalog</h2><p class="muted small">Pin a registry ID and version for every selection.</p><p class="runtime-note" *ngIf="blueprintMode && blueprint.pendingNodeId">Choose a component below, then configure and apply it to the selected blueprint node.</p>
+      <div class="kind-tabs" role="group" aria-label="Component type"><button *ngFor="let kind of kinds" [class.active]="selectedKind === kind" [attr.aria-pressed]="selectedKind === kind" (click)="setKind(kind)">{{ kind | titlecase }}</button></div>
+      <label for="catalog-search">Search {{ selectedKind }}s</label><input id="catalog-search" type="search" [(ngModel)]="search" (ngModelChange)="selection = ''" placeholder="Name or registry ID">
+      <label for="catalog-selection">Component and version</label>
+      <select #catalogSelect id="catalog-selection" [(ngModel)]="selection"><option value="">Select a {{ selectedKind }}…</option><option *ngFor="let d of options" [value]="key(d)">{{ d.name }} · #{{ d.id }} · v{{ d.version }}</option></select>
+      <p class="muted small" role="status" *ngIf="catalog.states[selectedKind].status === 'loading'">Loading all catalog pages…</p>
+      <p class="muted small" *ngIf="catalog.states[selectedKind].status === 'ready' && !catalog.states[selectedKind].items.length">The registry returned an empty catalog.</p>
+      <p class="muted small" *ngIf="catalog.states[selectedKind].status === 'ready' && catalog.states[selectedKind].items.length && !options.length">No matching components.</p>
+      <div class="error-box" role="alert" *ngIf="catalog.states[selectedKind].error">{{ catalog.states[selectedKind].error }}<button (click)="catalog.load(selectedKind)">Retry {{ selectedKind }} catalog</button></div>
+      <div *ngIf="selectedDescriptor as d" class="descriptor-summary">
+        <strong>{{ d.name }}</strong><p class="muted small">{{ d.description || 'No description supplied.' }}</p><span class="badge">{{ d.provenance }} metadata</span>
+        <p class="small" *ngIf="d.kind === 'model' || d.kind === 'metric'">Task compatibility: <strong>{{ selectionCompatibility }}</strong></p>
+        <p class="error-text small" *ngIf="selectionCompatibility === 'mismatch' && (d.kind === 'model' || d.kind === 'metric')">This version references a different task ID or version.</p>
+        <button class="text-button" (click)="openMetadata(d)">Review / complete metadata</button>
+      </div>
+      <button class="primary full" (click)="addSelected()" [disabled]="!selectedDescriptor || ((selectedKind === 'model' || selectedKind === 'metric') && selectionCompatibility === 'mismatch')">{{ selectedKind === 'task' ? 'Use this task' : 'Configure ' + selectedKind }}</button>
+      <button class="full" (click)="openMetadata()">Supply descriptor metadata</button>
+      <details class="session"><summary>Registry session</summary><p class="muted small" role="status">{{ tokens.status$ | async }}</p><p class="small">Open from <a href="https://causalbench.org" target="_blank" rel="noopener noreferrer">CausalBench ↗</a> or enter a session token.</p><label for="session-token">Session token</label><input id="session-token" type="password" [(ngModel)]="tokenInput" autocomplete="off" (keydown.enter)="connect()"><p class="error-text small" *ngIf="tokenError">{{ tokenError }}</p><button (click)="connect()">Connect</button><button *ngIf="tokens.hasToken()" (click)="tokens.clearToken()">Disconnect</button></details>
+      <p class="muted small footnote">Missing metadata is shown as unknown. Manual descriptors should reflect the task implementation and component manifests.</p>
+    </aside>
+    <div class="context-workspace">
+      <section class="card recipe" aria-labelledby="recipe-title"><div class="section-heading"><div><p class="eyebrow">01 / RECIPE</p><h2 id="recipe-title">Context details</h2></div><span class="badge">Local draft · in memory</span></div>
+        <p class="small muted opened-source" *ngIf="store.source as source">Opened {{ source.reference ? 'context #' + source.reference.id + ' · v' + source.reference.version : source.label }} · local edits</p>
+        <div class="fields"><div><label for="context-name">Context name</label><textarea id="context-name" [(ngModel)]="draft.name" rows="1" placeholder="e.g. Static discovery comparison" required></textarea></div><div><label for="task-selection">Task · exact ID and version</label><select id="task-selection" [ngModel]="selectedTaskKey" (ngModelChange)="selectTask($event)"><option value="">Select a task…</option><option *ngIf="taskMissingFromCatalog && draft.task as task" [value]="key(task)">{{ task.name }} · #{{ task.id }} · v{{ task.version }} · saved reference</option><option *ngFor="let task of catalog.states.task.items" [value]="key(task)">{{ task.name }} · #{{ task.id }} · v{{ task.version }}</option></select></div></div>
+        <label for="context-description">Description</label><textarea id="context-description" [(ngModel)]="draft.description" rows="2" placeholder="What does this benchmark compare?"></textarea>
+        <div class="task-contract" *ngIf="draft.task as task"><div><strong>{{ task.name }}</strong><span class="muted small"> #{{ task.id }} · v{{ task.version }} · {{ task.provenance }} metadata</span><p class="small" [class.error-text]="!task.contract">{{ task.contract ? 'Task input contract supplied. Python verifies runtime behavior.' : 'Task input contract unknown. Complete metadata to generate mappings.' }}</p></div><button (click)="openMetadata(task)">Task contract</button></div>
+      </section>
+      <section class="card" *ngIf="editing as entry" aria-label="Configuration editor"><app-sidebar [entry]="entry" [task]="draft.task" (applyEntry)="apply($event)" (cancelEdit)="editing = null" (removeEntry)="remove($event)" (editMetadata)="openMetadata($event)"></app-sidebar></section>
+      <section class="card composition" *ngIf="!blueprintMode; else blueprintEditor"><div class="section-heading"><div><p class="eyebrow">02 / COMPOSITION</p><h2>{{ store.showTaskComposition ? 'Task wiring' : 'Selected components' }}</h2></div><label class="check-label composition-toggle"><input type="checkbox" role="switch" [(ngModel)]="store.showTaskComposition">Show task composition</label></div>
+        <p class="muted small composition-summary">{{ summary.datasets }} datasets · {{ summary.models }} model configurations · {{ summary.metrics }} metric configurations</p>
+        <app-context-view [draft]="draft" [canvasMode]="store.showTaskComposition" (editEntry)="edit($event)"></app-context-view>
+      </section>
+      <ng-template #blueprintEditor><section class="card blueprint-section" aria-labelledby="blueprint-title"><div class="section-heading"><div><p class="eyebrow">02 / BLUEPRINT</p><h2 id="blueprint-title">Interactive blueprint</h2></div><span class="badge">Experimental</span></div>
+        <p class="small muted composition-summary">Drag nodes, pan and zoom, and sketch connections. Connections and processors are design notes; exports use the configured context recipe.</p>
+        <app-node-editor [draft]="draft" (configureNode)="configureBlueprintNode($event)" (removeEntry)="remove($event)"></app-node-editor>
+      </section></ng-template>
+      <section class="expansion" aria-label="Scenario preview"><div><strong>{{ summary.scenarios }}</strong><span>scenarios</span></div><span class="muted">×</span><div><strong>{{ summary.metrics }}</strong><span>metric configurations</span></div><span class="muted">=</span><div><strong>{{ summary.evaluations }}</strong><span>metric evaluations</span></div><p class="small muted">{{ summary.datasets }} datasets × {{ summary.models }} explicit model configurations.<br>Each metric evaluates every scenario.</p></section>
+      <section class="card validation" aria-labelledby="validation-title"><div class="section-heading"><div><p class="eyebrow">03 / VALIDATION</p><h2 id="validation-title">{{ blockers.length ? 'Complete the recipe' : 'Metadata checks passed' }}</h2></div><span class="badge" [class.invalid]="blockers.length">{{ blockers.length }} unresolved</span></div>
+        <ul class="issue-list" *ngIf="blockers.length"><li *ngFor="let issue of blockers"><span class="badge" [class.invalid]="issue.severity === 'error'">{{ issue.severity === 'unknown' ? 'Unknown' : 'Required' }}</span><div><code>{{ issue.path }}</code><p>{{ issue.message }}</p></div></li></ul>
+        <p class="runtime-note">Python verifies dataset contents, returned model output names and types, task helpers, and installed dependencies. Metadata checks cannot establish scientific suitability.</p>
+      </section>
+      <p class="small muted" role="status">{{ notice }}</p>
     </div>
   </div>
-
-  <!-- Export Dialog -->
-  <app-export-dialog
-    [showDialog]="showExportDialog"
-    [datasets]="datasets"
-    [models]="models"
-    [metrics]="metrics"
-    [selectedTaskType]="selectedTaskType"
-    [selectedTaskId]="selectedTaskId"
-    [selectedTaskVersion]="selectedTaskVersion"
-    (closeDialog)="onCloseExportDialog()">
-  </app-export-dialog>
-</div>
-
+</main>
+<app-export-dialog [showDialog]="showExport" [draft]="draft" (closeDialog)="showExport = false"></app-export-dialog>
+<app-open-context [showDialog]="showOpenContext" [replacesDraft]="hasCurrentWork" (contextOpened)="openExistingContext($event)" (closeDialog)="showOpenContext = false"></app-open-context>
+<dialog #metadataDialog class="metadata-dialog" aria-labelledby="metadata-title" (cancel)="closeMetadata()">
+  <div class="section-heading"><div><p class="eyebrow">EXPLICIT METADATA</p><h2 id="metadata-title">Component descriptor</h2></div><button aria-label="Close descriptor editor" (click)="closeMetadata()">✕</button></div>
+  <p>Supply metadata from the exact component manifest and task implementation. The example uses fictitious IDs; replace them with your actual registry identities.</p>
+  <p class="muted small">Tasks need modelData, metricData, and metricModel maps with runtime type names. Datasets need real file aliases and formats. Models and metrics need exact taskRefs and parameter declarations (&#123;&#125; when none). Saving updates metadata for matching entries and preserves their settings for revalidation.</p>
+  <label for="metadata-json">Descriptor JSON</label><textarea id="metadata-json" class="code-input" [(ngModel)]="metadataText" rows="18" spellcheck="false"></textarea>
+  <p class="error-box" role="alert" *ngIf="metadataError">{{ metadataError }}</p>
+  <div class="actions"><button (click)="closeMetadata()">Cancel</button><button class="primary" (click)="saveMetadata()">Save descriptor</button></div>
+</dialog>

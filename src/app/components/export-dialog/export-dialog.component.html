@@ -1,62 +1,9 @@
-<div class="export-dialog-overlay" *ngIf="showDialog" (click)="onClose()">
-  <div class="export-dialog" (click)="$event.stopPropagation()">
-    <div class="dialog-header">
-      <h2>Export Context</h2>
-      <button class="close-btn" (click)="onClose()">&times;</button>
-    </div>
-
-    <div class="dialog-content">
-      <!-- Task Type display -->
-      <div class="form-group">
-        <label>Task Type:</label>
-        <div class="task-type-display">{{ selectedTaskType }}</div>
-      </div>
-
-      <!-- Name field -->
-      <div class="form-group">
-        <label for="name">Name:</label>
-        <input 
-          id="name"
-          type="text" 
-          class="form-control" 
-          [(ngModel)]="name" 
-          placeholder="Enter context name">
-      </div>
-
-      <!-- Description field -->
-      <div class="form-group">
-        <label for="description">Description:</label>
-        <input 
-          id="description"
-          type="text" 
-          class="form-control" 
-          [(ngModel)]="description" 
-          placeholder="Enter context description">
-      </div>
-
-      <!-- Summary of items to export -->
-      <div class="export-summary">
-        <h4>Items to Export:</h4>
-        <div class="summary-item">
-          <strong>Datasets:</strong> {{ configuredDatasetsCount }}
-        </div>
-        <div class="summary-item">
-          <strong>Models:</strong> {{ configuredModelsCount }}
-        </div>
-        <div class="summary-item">
-          <strong>Metrics:</strong> {{ configuredMetricsCount }}
-        </div>
-      </div>
-    </div>
-
-    <div class="dialog-footer">
-      <button class="btn btn-secondary" (click)="onClose()">Cancel</button>
-      <button 
-        class="btn btn-primary" 
-        (click)="onExport()"
-        [disabled]="!name.trim()">
-        Export
-      </button>
-    </div>
-  </div>
-</div> 
+<dialog #dialog class="export-dialog" aria-labelledby="export-title" (cancel)="close()">
+  <div class="section-heading"><div><p class="eyebrow">REVIEW THE EXACT RECIPE</p><h2 id="export-title">Export context</h2></div><button (click)="close()" aria-label="Close export">✕</button></div>
+  <p>{{ summary.datasets }} dataset entries · {{ summary.models }} model configurations · {{ summary.metrics }} metric configurations</p><p><strong>{{ summary.scenarios }} scenarios · {{ summary.evaluations }} metric evaluations</strong></p>
+  <div class="error-box" *ngIf="issues.length" role="alert"><strong>Export is incomplete</strong><p>Resolve missing or incompatible metadata and settings before downloading.</p><ul><li *ngFor="let issue of issues"><code>{{ issue.path }}</code>: {{ issue.message }}</li></ul></div>
+  <label for="export-format">Export format</label><select id="export-format" [(ngModel)]="format"><option value="python">Python · create and execute locally</option><option value="yaml">Context YAML · CB 0.2.5</option></select>
+  <label for="export-preview">Exact file preview</label><textarea id="export-preview" class="code-input" readonly [value]="preview || 'Preview available after validation is complete.'" rows="18" spellcheck="false"></textarea>
+  <p class="runtime-note">Install causalbench-asu==0.2.5 and component dependencies in your local Python environment. Registry downloads require local authentication. Python executes the component code and verifies runtime contracts. Runs remain unpublished; publication is a separate explicit operation.</p>
+  <div class="actions"><button (click)="close()">Back to designer</button><button class="primary" [disabled]="issues.length > 0" (click)="download()">Download {{ format === 'python' ? 'Python' : 'YAML' }}</button></div>
+</dialog>

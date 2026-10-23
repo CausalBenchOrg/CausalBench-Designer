@@ -1,0 +1,11 @@
+type: task
+causalbench:
+    major: '0'
+    minor: '2'
+    build: '0'
+name: Causal Discovery (Temporal)
+source: NA
+url: NA
+description: Infer cause-and-effect relationships among variables from time-series or longitudinal observational data.
+path: discovery.temporal.py
+class_name: DiscoveryTemporal

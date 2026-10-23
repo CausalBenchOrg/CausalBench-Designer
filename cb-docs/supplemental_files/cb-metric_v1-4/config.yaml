@@ -1,0 +1,18 @@
+type: metric
+name: precision_temporal
+source: NA
+url: NA
+description: Accuracy metric for temporal causal graph.
+task:
+    id: 2
+    version: 1
+path: precision_temporal.py
+hyperparameters:
+    binarize:
+        data: boolean
+        description: Binarize the ground truth and predictions
+        value: true
+causalbench:
+    major: '0'
+    minor: '2'
+    build: '0'
