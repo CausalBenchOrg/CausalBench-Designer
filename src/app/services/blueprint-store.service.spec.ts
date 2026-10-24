@@ -39,4 +39,18 @@ describe('Experimental blueprint presentation state', () => {
     expect(new Set(state.nodes.map(n => n.id)).size).toBe(100);
     expect(state.unconfiguredCount).toBe(0);
   });
+  it('reconstructs recipe arrows on open and updates labels after mappings or task metadata change', () => {
+    const draft = supervisedFixture(), state = new BlueprintStore();
+    state.reset(draft);
+    expect(state.edges.length).toBe(0); expect(state.recipeEdges.length).toBe(3);
+    expect(state.recipeEdges.find(e => e.role === 'model-data')!.label).toContain('observations → features');
+    expect(state.recipeEdges.find(e => e.role === 'metric-data')!.label).toContain('observations → labels');
+    const ids = state.recipeEdges.map(e => e.id);
+    draft.datasets[0].mapping['features'] = 'another'; state.sync(draft);
+    expect(state.recipeEdges.map(e => e.id)).toEqual(ids);
+    expect(state.recipeEdges.find(e => e.role === 'model-data')!.label).toContain('another → features');
+    draft.task!.contract = undefined; state.sync(draft);
+    expect(state.recipeEdges.length).toBe(2); expect(state.recipeEdges[0].label).toContain('unverified');
+    draft.metrics = []; state.sync(draft); expect(state.recipeEdges.length).toBe(1);
+  });
 });

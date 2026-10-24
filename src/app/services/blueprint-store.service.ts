@@ -3,13 +3,14 @@ import { Draft, Entry, EntryKind, uniqueId } from '../domain/context';
 
 export type BlueprintKind = EntryKind | 'processor';
 export interface BlueprintNode { id: string; kind: BlueprintKind; entryId?: string; x: number; y: number; label: string; }
-export interface BlueprintEdge { id: string; sourceId: string; targetId: string; }
+export interface BlueprintEdge { id: string; sourceId: string; targetId: string; label?: string; role?: 'model-data' | 'metric-data' | 'prediction'; }
 
 /** Canvas presentation/sketch state is deliberately separate from executable context data. */
 @Injectable({ providedIn: 'root' })
 export class BlueprintStore {
   nodes: BlueprintNode[] = [];
   edges: BlueprintEdge[] = [];
+  recipeEdges: BlueprintEdge[] = [];
   selectedId: string | null = null;
   pendingNodeId: string | null = null;
   offset = { x: 0, y: 0 };
@@ -33,6 +34,21 @@ export class BlueprintStore {
     }
     const nodeIds = new Set(this.nodes.map(node => node.id));
     this.edges = this.edges.filter(edge => nodeIds.has(edge.sourceId) && nodeIds.has(edge.targetId));
+    const nodeFor = (entry: Entry) => this.nodes.find(n => n.entryId === entry.entryId)!;
+    const contract = draft.task?.contract;
+    const mappings = (entry: Entry, inputs: Record<string, string>) => Object.keys(inputs).filter(input => entry.mapping[input]).map(input => `${entry.mapping[input]} → ${input}`).join(', ');
+    const recipe: BlueprintEdge[] = [];
+    const edge = (source: Entry, target: Entry, role: BlueprintEdge['role'], label: string) => recipe.push({
+      id: `recipe:${source.entryId}:${target.entryId}:${role}`, sourceId: nodeFor(source).id, targetId: nodeFor(target).id, role, label
+    });
+    for (const dataset of draft.datasets) {
+      for (const model of draft.models) edge(dataset, model, 'model-data', contract ? mappings(dataset, contract.modelData) || 'Dataset × model scenario' : 'Dataset × model · inputs unverified');
+      if (contract && Object.keys(contract.metricData).length)
+        for (const metric of draft.metrics) edge(dataset, metric, 'metric-data', mappings(dataset, contract.metricData) || 'Dataset metric inputs · mapping incomplete');
+    }
+    for (const model of draft.models) for (const metric of draft.metrics)
+      edge(model, metric, 'prediction', contract ? Object.keys(contract.metricModel).join(', ') || 'Evaluate scenario' : 'Evaluate scenario · outputs unverified');
+    this.recipeEdges = recipe;
     if (this.selectedId && !nodeIds.has(this.selectedId)) this.selectedId = null;
     if (this.pendingNodeId && !nodeIds.has(this.pendingNodeId)) this.pendingNodeId = null;
   }

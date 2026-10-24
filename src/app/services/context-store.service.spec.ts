@@ -27,4 +27,10 @@ describe('Loaded context state', () => {
     expect(store.draft.name).not.toBe(draft.name); expect(store.source!.label).toBe('Original');
     expect(store.draft.task!.provenance).toBe('manual'); expect(store.draft.task!.contract).toBeDefined();
   });
+  it('does not replace package evidence with a less complete catalog summary', () => {
+    const store = new ContextStore(); store.draft = supervisedFixture();
+    store.draft.task!.provenance = 'package';
+    store.hydrateCatalog([{ ...store.draft.task!, provenance: 'registry', contract: undefined }]);
+    expect(store.draft.task!.provenance).toBe('package'); expect(store.draft.task!.contract).toBeDefined();
+  });
 });

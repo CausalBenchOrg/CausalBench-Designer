@@ -48,4 +48,23 @@ describe('Typed temporary configuration editor', () => {
     editor.setSavedOverride(config, 'enabled', 'null'); editor.apply(); expect(apply).toHaveBeenCalled();
     expect<unknown>(editor.entry.configurations[0].overrides['enabled']).toBe(false);
   });
+  it('retains unapplied settings and invalid field text when automatic package metadata arrives', () => {
+    const config = editor.working.configurations[0], declaration = editor.working.descriptor.parameters!['count'];
+    editor.setValue(config, 'count', declaration, '7');
+    editor.setValue(config, 'settings', editor.working.descriptor.parameters!['settings'], '{invalid');
+    editor.entry = { ...editor.entry, descriptor: { ...editor.entry.descriptor, provenance: 'package' } };
+    editor.ngOnChanges();
+    expect<unknown>(editor.working.configurations[0].overrides['count']).toBe(7);
+    expect(editor.raw[editor.fieldKey(config, 'settings')]).toBe('{invalid');
+    expect(editor.hasErrors).toBeTrue(); expect(editor.working.descriptor.provenance).toBe('package');
+  });
+  it('suggests only unambiguous type matches and preserves explicit mappings', () => {
+    const fixture = supervisedFixture(); editor.entry = fixture.datasets[0]; editor.task = fixture.task; editor.ngOnChanges();
+    editor.working.mapping = {}; editor.suggestMappings();
+    expect(editor.working.mapping).toEqual({ features: 'observations', labels: 'observations' });
+    editor.working.mapping['features'] = 'saved-choice'; editor.suggestMappings();
+    expect(editor.working.mapping['features']).toBe('saved-choice');
+    editor.working.descriptor.files!.push({ alias: 'second', format: 'dataframe' });
+    editor.working.mapping = {}; editor.suggestMappings(); expect(editor.working.mapping).toEqual({});
+  });
 });

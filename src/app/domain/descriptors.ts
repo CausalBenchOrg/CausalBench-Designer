@@ -74,7 +74,10 @@ function normalizeParameters(value: unknown): Record<string, Parameter> | undefi
     if (Object.hasOwn(p, 'hyperparameter_value')) {
       let defaultValue: unknown = p['hyperparameter_value'];
       if (typeof defaultValue === 'string' && !['string', 'str'].includes(parameter.data)) {
-        try { defaultValue = JSON.parse(defaultValue); } catch { /* Do not infer unclear encodings. */ }
+        if (defaultValue === 'True') defaultValue = true;
+        else if (defaultValue === 'False') defaultValue = false;
+        else if (defaultValue === 'None') defaultValue = null;
+        else try { defaultValue = JSON.parse(defaultValue); } catch { /* Do not infer unclear encodings. */ }
       }
       if (isValue(defaultValue)) parameter.value = defaultValue;
     }

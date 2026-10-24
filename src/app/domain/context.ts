@@ -14,7 +14,7 @@ export interface Descriptor extends Reference {
   kind: Kind;
   name: string;
   description?: string;
-  provenance: 'registry' | 'manual' | 'reference';
+  provenance: 'registry' | 'package' | 'manual' | 'reference';
   taskRefs?: Partial<Reference>[];
   contract?: InputContract;
   files?: FileAlias[];
@@ -96,7 +96,10 @@ export function valueError(value: Value, data: string): string | null {
     case 'boolean': case 'bool': return typeof value === 'boolean' ? null : 'Choose true, false, or null.';
     case 'string': case 'str': return typeof value === 'string' ? null : 'Enter text or null.';
     case 'array': case 'list': return Array.isArray(value) ? null : 'Enter a JSON array or null.';
-    case 'object': case 'dict': return !Array.isArray(value) && typeof value === 'object' ? null : 'Enter a JSON object or null.';
+    // CB's generic object parameters include scalar/array options (for example
+    // r2score_regression.multioutput="uniform_average"), as well as mappings.
+    case 'object': return null;
+    case 'dict': return !Array.isArray(value) && typeof value === 'object' ? null : 'Enter a JSON object or null.';
     default: return null;
   }
 }
@@ -108,7 +111,7 @@ export function validateDraft(draft: Draft): Issue[] {
   if (!task) add('task', 'Select exactly one task and version.');
   else {
     if (task.kind !== 'task' || !validIdentity(task.id) || !validIdentity(task.version)) add('task', 'A positive registry ID and version are required.');
-    if (!task.contract) add('task.contract', 'Input contract unavailable. Supply task metadata from the task implementation.', 'unknown');
+    if (!task.contract) add('task.contract', 'Task input declarations have not loaded. Retry automatic metadata loading; see the module status.', 'unknown');
     if (task.contract) {
       for (const [name, type] of Object.entries(task.contract.modelData)) {
         if (Object.hasOwn(task.contract.metricData, name) && task.contract.metricData[name] !== type)
@@ -124,7 +127,7 @@ export function validateDraft(draft: Draft): Issue[] {
       if (entry.kind !== group.slice(0, -1) || descriptor.kind !== entry.kind) add(path, 'Component kind does not match this entry.');
       if (!validIdentity(descriptor.id) || !validIdentity(descriptor.version)) add(path, 'A positive registry ID and version are required.');
       if (entry.kind === 'dataset') {
-        if (descriptor.files === undefined) add(`${path}.files`, 'Dataset aliases unavailable. Supply the manifest file alias map.', 'unknown');
+        if (descriptor.files === undefined) add(`${path}.files`, 'Dataset aliases have not loaded. Retry automatic metadata loading; see the module status.', 'unknown');
         const inputs = task?.contract ? datasetInputs(task.contract) : {};
         for (const [name, expectedType] of Object.entries(inputs)) {
           const alias = Object.hasOwn(entry.mapping, name) ? entry.mapping[name] : '';
@@ -143,9 +146,9 @@ export function validateDraft(draft: Draft): Issue[] {
       } else {
         const match = compatibility(descriptor, task);
         if (task && match !== 'match') add(`${path}.task`, match === 'unknown'
-          ? 'Exact task ID/version metadata unavailable. Supply the component manifest task reference.'
+          ? 'The component’s exact task reference has not loaded. Retry automatic metadata loading; see the module status.'
           : `Requires a different task. Context uses task ${task.id}, version ${task.version}.`, match === 'unknown' ? 'unknown' : 'error');
-        if (descriptor.parameters === undefined) add(`${path}.hyperparameters`, 'Parameter declarations unavailable. Supply manifest hyperparameters ({} if none).', 'unknown');
+        if (descriptor.parameters === undefined) add(`${path}.hyperparameters`, 'Parameter declarations have not loaded. Retry automatic metadata loading; see the module status.', 'unknown');
         if (!entry.configurations.length) add(`${path}.configurations`, 'Add at least one explicit configuration.');
         for (const [configIndex, config] of entry.configurations.entries()) {
           for (const [name, value] of Object.entries(config.overrides)) {

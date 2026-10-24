@@ -1,5 +1,5 @@
 import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
-import { Configuration, Descriptor, Entry, Parameter, Value, clone, compatibility, datasetInputs, isValue, newConfiguration, valueError } from '../../domain/context';
+import { Configuration, Descriptor, Entry, Parameter, Value, clone, compatibility, datasetInputs, isValue, newConfiguration, runtimeType, valueError } from '../../domain/context';
 
 @Component({ selector: 'app-sidebar', templateUrl: './sidebar.component.html', styleUrls: ['./sidebar.component.scss'] })
 export class SidebarComponent implements OnChanges {
@@ -14,6 +14,12 @@ export class SidebarComponent implements OnChanges {
   errors: Record<string, string> = {};
   ngOnChanges(changes?: SimpleChanges) {
     if (changes && !changes['entry'] && this.working) return;
+    if (this.working?.entryId === this.entry.entryId) {
+      this.working.descriptor = clone(this.entry.descriptor);
+      for (const config of this.working.configurations) for (const [name, value] of Object.entries(config.overrides))
+        if (!this.errors[this.fieldKey(config, name)]) this.raw[this.fieldKey(config, name)] = this.editText(value, this.working.descriptor.parameters?.[name]);
+      return;
+    }
     this.working = clone(this.entry);
     this.raw = {}; this.errors = {};
     for (const config of this.working.configurations)
@@ -62,6 +68,13 @@ export class SidebarComponent implements OnChanges {
     delete this.errors[this.fieldKey(config, name)];
   }
   setMapping(name: string, alias: string) { this.working.mapping = { ...this.working.mapping, [name]: alias }; }
+  suggestMappings() {
+    for (const input of this.inputs) {
+      if (this.working.mapping[input.name]) continue;
+      const matches = this.working.descriptor.files?.filter(file => runtimeType(file.format) === input.type) ?? [];
+      if (matches.length === 1) this.setMapping(input.name, matches[0].alias);
+    }
+  }
   removeMapping(name: string) { const { [name]: removed, ...rest } = this.working.mapping; this.working.mapping = rest; }
   get staleMappings() { const names = new Set(this.inputs.map(i => i.name)); return Object.keys(this.working.mapping).filter(k => !names.has(k)); }
   missingAlias(name: string) { const alias = this.working.mapping[name]; return !!alias && !this.working.descriptor.files?.some(file => file.alias === alias); }

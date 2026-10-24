@@ -155,6 +155,20 @@ export class NodeEditorComponent implements DoCheck {
     const source = this.state.nodes.find(node => node.id === edge.sourceId), target = this.state.nodes.find(node => node.id === edge.targetId);
     return source && target ? this.curve(this.port(source, 'output'), this.port(target, 'input')) : '';
   }
+  recipePath(edge: BlueprintEdge) {
+    const source = this.state.nodes.find(n => n.id === edge.sourceId)!, target = this.state.nodes.find(n => n.id === edge.targetId)!;
+    if (edge.role !== 'metric-data') return this.edgePath(edge);
+    const y = Math.min(source.y, target.y) - 35;
+    return `M ${source.x + this.width / 2} ${source.y} C ${source.x + this.width / 2} ${y}, ${target.x + this.width / 2} ${y}, ${target.x + this.width / 2} ${target.y}`;
+  }
+  edgeLabel(edge: BlueprintEdge) {
+    const source = this.state.nodes.find(n => n.id === edge.sourceId)!, target = this.state.nodes.find(n => n.id === edge.targetId)!;
+    return edge.role === 'metric-data' ? { x: (source.x + target.x + this.width) / 2, y: Math.min(source.y, target.y) - 28 }
+      : { x: (source.x + this.width + target.x) / 2, y: (source.y + target.y) / 2 + 87 };
+  }
+  showEdgeLabel(edge: BlueprintEdge) {
+    return edge.role !== 'metric-data' || this.state.recipeEdges.find(e => e.role === edge.role && e.sourceId === edge.sourceId)?.id === edge.id;
+  }
   get tempPath() {
     const node = this.state.nodes.find(n => n.id === this.connecting?.nodeId);
     if (!node || !this.connecting) return '';

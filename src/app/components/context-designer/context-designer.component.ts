@@ -1,4 +1,4 @@
-import { Component, ElementRef, ViewChild } from '@angular/core';
+import { Component, DoCheck, ElementRef, ViewChild } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { CatalogService } from '../../services/catalog.service';
 import { ContextStore } from '../../services/context-store.service';
@@ -14,7 +14,7 @@ import { OpenedContext, hydrateContext } from '../../domain/context-import';
   templateUrl: './context-designer.component.html',
   styleUrls: ['./context-designer.component.scss']
 })
-export class ContextDesignerComponent {
+export class ContextDesignerComponent implements DoCheck {
   readonly blueprintMode: boolean;
   @ViewChild('metadataDialog', { static: true }) metadataDialog!: ElementRef<HTMLDialogElement>;
   @ViewChild('catalogSelect', { static: true }) catalogSelect!: ElementRef<HTMLSelectElement>;
@@ -32,6 +32,17 @@ export class ContextDesignerComponent {
   notice = '';
   constructor(public catalog: CatalogService, public store: ContextStore, public tokens: TokenService,
     public blueprint: BlueprintStore, public theme: ThemeService, route: ActivatedRoute) { this.blueprintMode = route.snapshot.data['blueprint'] === true; }
+  ngDoCheck() {
+    const descriptors = [...this.catalog.metadata.draftDescriptors(this.draft), ...(this.selectedDescriptor ? [this.selectedDescriptor] : []), ...(this.editing ? [this.editing.descriptor] : [])];
+    if (this.tokens.hasToken()) for (const descriptor of descriptors)
+      if (descriptor.provenance !== 'manual' && this.catalog.metadata.state(descriptor).status === 'idle') void this.resolveMetadata(descriptor);
+    if (this.editing) {
+      const resolved = this.catalog.metadata.state(this.editing.descriptor).descriptor;
+      if (resolved && this.editing.descriptor.provenance !== 'manual' && this.editing.descriptor !== resolved)
+        this.editing = { ...this.editing, descriptor: resolved };
+    }
+  }
+  async resolveMetadata(descriptor: Descriptor, retry = false) { await this.catalog.resolve(descriptor, retry); }
   get draft() { return this.store.draft; }
   get summary() { return counts(this.draft); }
   get issues() { return validateDraft(this.draft); }

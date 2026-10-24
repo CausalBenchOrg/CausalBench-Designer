@@ -4,14 +4,15 @@
   <button class="text-button" (click)="editMetadata.emit(item.descriptor)">Review / complete component metadata</button>
   <ng-container *ngIf="item.kind === 'dataset'; else configurationEditor">
     <h3>Task input → dataset alias</h3><p class="small muted">One alias may supply multiple inputs. Select aliases from this exact dataset version.</p>
-    <p class="error-box" *ngIf="!task?.contract">Task input contract unknown. Complete the task metadata to author named mappings.</p>
-    <p class="error-box" *ngIf="item.descriptor.files === undefined">Dataset aliases unknown. Complete component metadata using its manifest.</p>
+    <button *ngIf="inputs.length && item.descriptor.files?.length" (click)="suggestMappings()">Suggest compatible mappings</button><p class="small muted" *ngIf="inputs.length && item.descriptor.files?.length">Suggestions fill empty inputs only when exactly one alias has the required type. Choose among multiple matching aliases below.</p>
+    <p class="runtime-note" *ngIf="!task?.contract">Task input declarations load automatically from the selected task. If they remain unavailable, review the module metadata status.</p>
+    <p class="runtime-note" *ngIf="item.descriptor.files === undefined">Dataset aliases load automatically. If they remain unavailable, review the module metadata status.</p>
     <div class="mapping-row" *ngFor="let input of inputs; trackBy: trackName"><label [for]="'mapping-' + input.name"><code>{{ input.name }}</code><small>{{ input.type }}</small></label><select [id]="'mapping-' + input.name" [ngModel]="item.mapping[input.name] || ''" (ngModelChange)="setMapping(input.name, $event)"><option value="">Select an alias…</option><option *ngIf="missingAlias(input.name)" [value]="item.mapping[input.name]">{{ item.mapping[input.name] }} · saved alias, metadata unresolved</option><option *ngFor="let file of item.descriptor.files || []" [value]="file.alias">{{ file.alias }} · {{ file.format || 'format unknown' }}{{ file.path ? ' · ' + file.path : '' }}</option></select></div>
     <div *ngFor="let name of staleMappings" class="error-box"><p>{{ task?.contract ? 'Saved mapping is not declared by the current task:' : 'Saved mapping — task contract unknown:' }} <code>{{ name }}</code></p><label [for]="'saved-mapping-' + name">Saved alias for {{ name }}</label><input [id]="'saved-mapping-' + name" [ngModel]="item.mapping[name]" (ngModelChange)="setMapping(name, $event)"><button (click)="removeMapping(name)">Remove mapping</button></div>
   </ng-container>
   <ng-template #configurationEditor>
     <p class="error-box" *ngIf="match !== 'match'">Task compatibility: {{ match }}. This entry needs an exact task ID and version match before export.</p>
-    <p class="error-box" *ngIf="item.descriptor.parameters === undefined">Parameter declarations unknown. Supply the manifest hyperparameters; use an empty object when none exist.</p>
+    <p class="runtime-note" *ngIf="item.descriptor.parameters === undefined">Parameter declarations load automatically. If they remain unavailable, review the module metadata status.</p>
     <div class="configuration" *ngFor="let config of item.configurations; trackBy: trackConfiguration; let i = index">
       <div class="section-heading"><h3>Configuration {{ i + 1 }}</h3><button (click)="removeConfiguration(config)" [disabled]="item.configurations.length === 1" [attr.aria-label]="'Remove configuration ' + (i + 1)">Remove</button></div>
       <label [for]="'config-label-' + config.id">Label (optional, designer only)</label><input [id]="'config-label-' + config.id" [(ngModel)]="config.label" placeholder="e.g. Lower significance threshold">

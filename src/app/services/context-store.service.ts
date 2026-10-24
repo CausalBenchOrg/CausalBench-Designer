@@ -12,6 +12,7 @@ export class ContextStore {
     const hydrate = (current: Descriptor) => {
       if (current.provenance === 'manual') return current;
       const incoming = descriptors.find(d => d.kind === current.kind && d.id === current.id && d.version === current.version);
+      if (current.provenance === 'package' && incoming?.provenance === 'registry') return current;
       return incoming ? { ...current, ...clone(Object.fromEntries(Object.entries(incoming).filter(([, value]) => value !== undefined))) } as Descriptor : current;
     };
     if (this.draft.task) this.draft.task = hydrate(this.draft.task);

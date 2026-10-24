@@ -48,8 +48,12 @@ code, .code-input { font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 .muted { color: var(--muted); }
 .small { font-size: 12px; }
 .eyebrow { font-size: 10px; font-weight: 750; letter-spacing: 1.4px; color: var(--accent); margin-bottom: 5px; }
-.card { background: var(--paper); border: 1px solid var(--line); border-radius: 11px; padding: 22px; }
+.card { min-width: 0; overflow-wrap: anywhere; background: var(--paper); border: 1px solid var(--line); border-radius: 11px; padding: 22px; }
 .section-heading { display: flex; justify-content: space-between; align-items: center; gap: 14px; margin-bottom: 16px; flex-wrap: wrap; }
+.section-heading > * { min-width: 0; max-width: 100%; }
+.fields > div { min-width: 0; }
+.task-contract { flex-wrap: wrap; }
+.task-contract > div { flex: 1 1 220px; min-width: 0; }
 .badge { display: inline-block; font-size: 10px; font-weight: 650; letter-spacing: .2px; color: var(--badge-ink); background: var(--badge); padding: 3px 8px; border-radius: 5px; width: fit-content; }
 .badge.invalid { color: var(--danger); background: var(--invalid); }
 .error-box { border: 1px solid var(--error-line); background: var(--error); color: var(--error-ink); border-radius: 7px; padding: 12px; margin: 12px 0; overflow-wrap: anywhere; }

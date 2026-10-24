@@ -63,6 +63,14 @@ describe('Context contracts and serialization', () => {
     expect<unknown>(serializeYaml(draft)).toContain('"build":"5"');
     expect<unknown>(serializePython(draft)).toContain('\\n');
   });
+  it('accepts scalar and array options for generic object parameters used by registered metrics', () => {
+    const draft = supervisedFixture();
+    for (const value of ['uniform_average', [0.25, 0.75]]) {
+      draft.models[0].configurations[0].overrides['settings'] = value;
+      expect(blockers(draft)).toEqual([]);
+      expect<unknown>(contextData(draft).models[0].hyperparameters['settings']).toEqual(value);
+    }
+  });
   it('isolates temporary edits and applied snapshots, allowing duplicate module references', () => {
     const store = new ContextStore();
     const entry = supervisedFixture().models[0];
@@ -106,7 +114,8 @@ describe('Descriptor boundaries', () => {
     expect<unknown>(model.parameters).toEqual({});
   });
   it('normalizes manifest aliases and typed false/zero/null defaults without wrappers', () => {
-    const model = normalizeCatalog('model', [{ modl_id: 3, modl_version_info_list: [{ version: { version_number: 2, task: { id: 2, version: 1 }, hyperparameters: [{ hyperparameter_name: 'enabled', hyperparameter_data_type: 'boolean', hyperparameter_value: 'false' }] } }] }])[0];
+    const model = normalizeCatalog('model', [{ modl_id: 3, modl_version_info_list: [{ version: { version_number: 2, task: { id: 2, version: 1 }, hyperparameters: [{ hyperparameter_name: 'enabled', hyperparameter_data_type: 'boolean', hyperparameter_value: 'false' }, { hyperparameter_name: 'pythonTrue', hyperparameter_data_type: 'boolean', hyperparameter_value: 'True' }, { hyperparameter_name: 'pythonNull', hyperparameter_data_type: 'integer', hyperparameter_value: 'None' }] } }] }])[0];
+    expect<unknown>(model.parameters!['pythonTrue'].value).toBeTrue(); expect<unknown>(model.parameters!['pythonNull'].value).toBeNull();
     expect<unknown>(model.taskRefs).toEqual([{ id: 2, version: 1 }]);
     expect<unknown>(model.parameters?.['enabled'].value).toBeFalse();
     const d = normalizeCatalog('dataset', [{ dataset_id: 1, dataset_version_info_list: [{ version: { version_number: 1, files: { observations: { data: 'dataframe', path: 'x.csv' } } } }] }])[0];

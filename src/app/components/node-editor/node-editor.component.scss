@@ -23,3 +23,6 @@
 .blueprint-menu { position:absolute;display:grid;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:5px;box-shadow:0 4px 18px #18354222; }
 .blueprint-menu button { border:0;text-align:left; }
 @media(max-width:680px){.blueprint-canvas{height:430px}.zoom-controls{margin-left:0}}
+.recipe-edge { fill: none; stroke: var(--accent); stroke-width: 2; }
+.metric-data .recipe-edge { stroke-dasharray: 5 4; }
+.recipe-edge-label { font-size: 9px; fill: var(--ink); paint-order: stroke; stroke: var(--paper); stroke-width: 4px; stroke-linejoin: round; pointer-events: none; }
