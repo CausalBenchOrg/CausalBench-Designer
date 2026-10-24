@@ -4,7 +4,7 @@
     <div class="empty-component" *ngIf="!group.entries.length"><span aria-hidden="true">+</span><p>{{ group.empty }}</p><p class="small">Add from the component catalog.</p></div>
     <button class="component-node" *ngFor="let entry of group.entries; trackBy: trackEntry" (click)="editEntry.emit(entry)" [attr.aria-label]="'Edit ' + entry.kind + ' ' + entry.descriptor.name">
       <span class="node-type">{{ entry.kind }}</span><strong>{{ entry.descriptor.name }}</strong><span class="small muted">#{{ entry.descriptor.id }} · v{{ entry.descriptor.version }}</span>
-      <span class="badge" *ngIf="entry.kind !== 'dataset'" [class.invalid]="match(entry) === 'mismatch'">Task: {{ match(entry) }}</span>
+      <span class="badge" *ngIf="entry.kind !== 'dataset'" [class.invalid]="match(entry) === 'mismatch'" [class.warning]="match(entry) === 'unknown'" [class.success]="match(entry) === 'match'">Task: {{ match(entry) }}</span>
       <ng-container *ngIf="entry.kind === 'dataset'"><span class="wire small" *ngFor="let pair of mapping(entry); trackBy: trackMapping"><code>{{ pair.alias }}</code><span aria-hidden="true"> → </span><code>{{ pair.input }}</code></span><span class="small muted" *ngIf="!mapping(entry).length">Mapping incomplete</span></ng-container>
       <span class="small" *ngIf="entry.kind !== 'dataset'">{{ entry.configurations.length }} explicit configuration{{ entry.configurations.length === 1 ? '' : 's' }}</span><span class="edit-hint">Edit configuration →</span>
     </button>

@@ -20,7 +20,7 @@
 .temporary { stroke-dasharray:6 4;pointer-events:none; }
 .canvas-empty { position:absolute;inset:38% 15% auto;text-align:center;pointer-events:none;color:var(--muted); }
 .canvas-empty p { font-size:12px;margin-top:8px; }
-.blueprint-menu { position:absolute;display:grid;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:5px;box-shadow:0 4px 18px #18354222; }
+.blueprint-menu { position:absolute;display:grid;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:5px;box-shadow:0 4px 18px var(--shadow-color); }
 .blueprint-menu button { border:0;text-align:left; }
 @media(max-width:680px){.blueprint-canvas{height:430px}.zoom-controls{margin-left:0}}
 .recipe-edge { fill: none; stroke: var(--accent); stroke-width: 2; }

@@ -10,7 +10,7 @@
 .edit-hint { font-size: 10px; color: var(--accent); margin-top: 5px; }
 .wire { border-radius: 4px; background: var(--wire); padding: 3px 6px; }
 .canvas { background-image: radial-gradient(var(--grid) 1px, transparent 1px); background-size: 16px 16px; padding: 16px; border-radius: 8px; }
-.canvas .component-node { box-shadow: 0 3px 8px #2843540d; border-top: 3px solid var(--dataset-color); }
+.canvas .component-node { box-shadow: 0 3px 8px var(--shadow-color); border-top: 3px solid var(--dataset-color); }
 .canvas .model .component-node { border-top-color: var(--model-color); } .canvas .metric .component-node { border-top-color: var(--metric-color); }
 .task-output { border: 1px dashed var(--task-line); padding: 12px; background: var(--task-output); border-radius: 6px; }
 .wiring-note { margin-top: 14px; }
