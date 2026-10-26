@@ -1,0 +1,6 @@
+.file-source,.paste-source { border-top:1px solid var(--line);margin-top:18px;padding-top:14px; }
+.file-source p { margin-top:8px; }
+.paste-source summary { cursor:pointer;font-weight:600; }
+.paste-source button { margin-top:10px; }
+.context-preview { margin-top:20px;padding:16px;border:1px solid var(--line);border-radius:8px;background:var(--soft); }
+.context-preview p { margin-top:7px;overflow-wrap:anywhere; }

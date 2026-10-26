@@ -1,0 +1,89 @@
+[
+  {
+    "kind": "task",
+    "id": 1,
+    "version": 1,
+    "name": "Causal Discovery (Static)",
+    "description": "Infer cause-and-effect relationships among variables from observational data measured at a single point in time.",
+    "contract": {
+      "modelData": {
+        "data": "SpatioTemporalData"
+      },
+      "metricData": {
+        "ground_truth": "SpatioTemporalGraph"
+      },
+      "metricModel": {
+        "prediction": "SpatioTemporalGraph"
+      }
+    }
+  },
+  {
+    "kind": "dataset",
+    "id": 1443,
+    "version": 1,
+    "name": "sachs",
+    "description": "The data consist in the simultaneous measurements of 11 phosphorylated proteins and phospholipids derived from thousands of individual primary immune system cells, subjected to both general and specific molecular interventions.",
+    "files": [
+      {
+        "alias": "file1",
+        "format": "dataframe",
+        "path": "sachs.2005.continuous.csv"
+      },
+      {
+        "alias": "file2",
+        "format": "graph.static",
+        "path": "causal_info_adjmat.csv"
+      }
+    ]
+  },
+  {
+    "kind": "model",
+    "id": 3,
+    "version": 1,
+    "name": "pc",
+    "description": "PC algorithm: A classic causal discovery algorithm based on conditional independence tests.",
+    "taskRefs": [
+      {
+        "id": 1,
+        "version": 1
+      }
+    ],
+    "parameters": {
+      "variant": {
+        "data": "string",
+        "description": "A variant of PC-algorithm, one of [`original`, `stable`, `parallel`].",
+        "value": "original"
+      },
+      "alpha": {
+        "data": "decimal",
+        "description": "Significance level.",
+        "value": 0.05
+      },
+      "ci_test": {
+        "data": "string",
+        "description": "ci_test method, if str, must be one of [`fisherz`, `g2`, `chi2`]",
+        "value": "fisherz"
+      }
+    }
+  },
+  {
+    "kind": "metric",
+    "id": 1,
+    "version": 1,
+    "name": "accuracy_static",
+    "description": "Accuracy metric for static causal graph.",
+    "taskRefs": [
+      {
+        "id": 1,
+        "version": 1
+      }
+    ],
+    "parameters": {
+      "binarize": {
+        "data": "boolean",
+        "description": "Binarize the ground truth and predictions",
+        "value": true
+      }
+    }
+  }
+]

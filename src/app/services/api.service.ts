@@ -1,345 +1,71 @@
-import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Observable, catchError, map, of } from 'rxjs';
+import { Inject, Injectable, InjectionToken } from '@angular/core';
+import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
+import { Observable, EMPTY, expand, map, reduce, throwError, timeout } from 'rxjs';
+import { Kind, Descriptor } from '../domain/context';
+import { normalizeCatalog } from '../domain/descriptors';
 
-export interface ApiResponse<T> {
-  success: boolean;
-  message: string;
-  status_code: number;
-  data: T;
+export interface RegistryConfig { baseUrl: string; pageSize: number; maxPages: number; }
+export const REGISTRY_CONFIG = new InjectionToken<RegistryConfig>('registry configuration', {
+  providedIn: 'root', factory: () => ({ baseUrl: 'https://causalbench.org/api', pageSize: 1000, maxPages: 100 })
+});
+const ENDPOINTS: Record<Kind, [string, string]> = {
+  dataset: ['dataset_version/fetch', 'dataset_descriptors'], model: ['model_version/fetch', 'modl_descriptors'],
+  metric: ['metric_version/fetch', 'metric_descriptors'], task: ['tasks/fetch', 'task_descriptors']
+};
+// The live model/metric fetch schema requires this request hint. The server still
+// authenticates the bearer token; an unverified browser claim grants no access.
+export function registryUserId(token: string): number | undefined {
+  try {
+    const part = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const claim = JSON.parse(atob(part.padEnd(Math.ceil(part.length / 4) * 4, '='))).sub;
+    const id = typeof claim === 'number' || typeof claim === 'string' && /^\d+$/.test(claim) ? Number(claim) : NaN;
+    return Number.isSafeInteger(id) && id > 0 ? id : undefined;
+  } catch { return undefined; }
 }
-
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class ApiService {
-  // Update this base URL to match your API backend
-  private baseUrl = 'https://causalbench.org/api'; // Adjust this to your API URL
-
-  // Hardcoded request bodies - paste your pre-formatted request bodies here
-  private readonly DATASET_REQUEST_BODY = {
-    "showOnlyUserData": false,
-    "searchText": "",
-    "sortField": "",
-    "sortState": "",
-    "pageNumber": 0,
-    "pageSize": 999999,
-    "filters": []
-  };
-
-  private readonly MODEL_REQUEST_BODY = {
-    "searchText": "",
-    "pageNumber": 0,
-    "pageSize": 9999,
-    "sortField": "Uploaded Date",
-    "sortState": "desc",
-    "user_id": 2,
-    "filters": [
-        {
-            "name": "Model ID",
-            "type": "chips_search_bar",
-            "value": [],
-            "metaData": []
-        },
-        {
-            "name": "Model Version",
-            "type": "chips_search_bar",
-            "value": [],
-            "metaData": []
-        },
-        {
-            "name": "Runs",
-            "type": "chip",
-            "value": [],
-            "metaData": [
-                {
-                    "name": ">10s",
-                    "value": "10"
-                },
-                {
-                    "name": ">100s",
-                    "value": "100"
-                },
-                {
-                    "name": ">1000s",
-                    "value": "1000"
-                },
-                {
-                    "name": ">100000s",
-                    "value": "100000"
-                }
-            ]
-        },
-        {
-            "name": "Features",
-            "type": "chip",
-            "value": [],
-            "metaData": [
-                {
-                    "name": ">10s",
-                    "value": "10"
-                },
-                {
-                    "name": ">100s",
-                    "value": "100"
-                },
-                {
-                    "name": ">1000s",
-                    "value": "1000"
-                }
-            ]
-        },
-        {
-            "name": "Likes",
-            "type": "chip",
-            "value": [],
-            "metaData": [
-                {
-                    "name": ">100s",
-                    "value": "100"
-                },
-                {
-                    "name": ">1000s",
-                    "value": "1000"
-                },
-                {
-                    "name": ">100000s",
-                    "value": "100000"
-                }
-            ]
-        },
-        {
-            "name": "Downloads",
-            "type": "chip",
-            "value": [],
-            "metaData": [
-                {
-                    "name": ">10s",
-                    "value": "10"
-                },
-                {
-                    "name": ">100s",
-                    "value": "100"
-                },
-                {
-                    "name": ">1000s",
-                    "value": "1000"
-                }
-            ]
-        },
-        {
-            "name": "Visibility",
-            "type": "chip",
-            "value": [],
-            "metaData": [
-                {
-                    "name": "Public",
-                    "value": "Public"
-                },
-                {
-                    "name": "Private",
-                    "value": "Private"
-                }
-            ]
-        },
-        {
-            "name": "Tags",
-            "type": "chips_search_bar",
-            "value": [],
-            "metaData": []
-        },
-        {
-            "name": "Verification",
-            "type": "chip",
-            "value": [],
-            "metaData": [
-                {
-                    "name": "Verified",
-                    "value": "Verified"
-                },
-                {
-                    "name": "Not Verified",
-                    "value": "Not_Verified"
-                }
-            ]
-        },
-        {
-            "name": "Status",
-            "type": "chip",
-            "value": [],
-            "metaData": [
-                {
-                    "name": "Active",
-                    "value": "Active"
-                },
-                {
-                    "name": "Deactive",
-                    "value": "Deactive"
-                }
-            ]
+  constructor(private http: HttpClient, @Inject(REGISTRY_CONFIG) private config: RegistryConfig) {}
+  getCatalog(kind: Kind, token: string): Observable<Descriptor[]> {
+    const [endpoint, key] = ENDPOINTS[kind];
+    const userId = registryUserId(token);
+    if ((kind === 'model' || kind === 'metric') && userId === undefined)
+      return throwError(() => new Error('This registry catalog requires a session token with a numeric subject. Reconnect with a current CausalBench session.'));
+    return new Observable<Descriptor[]>(subscriber => {
+      const seen = new Set<string>();
+      const seenIds = new Set<number>();
+      const page = (number: number) => this.http.post<any>(`${this.config.baseUrl}/${endpoint}`, {
+        showOnlyUserData: false, searchText: '', sortField: kind === 'task' ? '' : 'Uploaded Date', sortState: kind === 'task' ? '' : 'desc', pageNumber: number, pageSize: this.config.pageSize, filters: [],
+        ...((kind === 'model' || kind === 'metric') ? { user_id: userId } : {})
+      }, { headers: new HttpHeaders({ 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }) }).pipe(timeout(20000), map(response => {
+        if ([401, 403].includes(Number(response?.status_code))) throw new HttpErrorResponse({ status: Number(response.status_code), statusText: 'Registry denied the session' });
+        if (response?.success === false || Number(response?.status_code) >= 400) throw new Error(`Registry rejected the ${kind} request${response?.status_code ? ` (${response.status_code})` : ''}.`);
+        const items = response?.data?.[key];
+        if (!Array.isArray(items)) throw new Error(`Unsupported ${kind} response: expected data.${key}. No partial catalog was loaded.`);
+        if (items.length) {
+          const fingerprint = JSON.stringify(items);
+          if (seen.has(fingerprint)) throw new Error('Registry repeated a page. Pagination is unresolved; no partial catalog was loaded.');
+          seen.add(fingerprint);
+          const idKey = `${kind === 'model' ? 'modl' : kind}_id`;
+          for (const item of items) {
+            const id = Number(item?.[idKey]);
+            if (seenIds.has(id)) throw new Error('Registry returned overlapping pages. Retry the catalog; no partial catalog was loaded.');
+            if (Number.isSafeInteger(id) && id > 0) seenIds.add(id);
+          }
         }
-    ],
-    "showOnlyUserData": false
-  };
-
-  private readonly METRIC_REQUEST_BODY = {
-    "showOnlyUserData": false,
-    "searchText": "",
-    "sortField": "",
-    "sortState": "",
-    "pageNumber": 0,
-    "pageSize": 20,
-    "filters": [],
-    "user_id": "1"
-  };
-
-  private readonly TASKS_REQUEST_BODY = {
-    "showOnlyUserData": false,
-    "searchText": "",
-    "sortField": "",
-    "sortState": "",
-    "pageNumber": 0,
-    "pageSize": 20,
-    "filters": [],
-    "user_id": "1"
-  };
-
-  constructor(
-    private http: HttpClient
-  ) { }
-
-  // Get headers with dynamic token
-  private getHeaders(token: string): HttpHeaders {
-    return new HttpHeaders({
-      'Content-Type': 'application/json',
-      'Accept': '*/*',
-      'Connection': 'keep-alive',
-      'Accept-Encoding': 'gzip, deflate, br',
-      'Authorization': token ? `Bearer ${token}` : ''
+        return { number, items };
+      }));
+      const subscription = page(0).pipe(
+        expand(result => !result.items.length ? EMPTY : result.number + 1 >= this.config.maxPages
+          ? throwError(() => new Error('Registry pagination limit reached. Narrow the catalog or verify server pagination; no partial catalog was loaded.'))
+          : page(result.number + 1), 1),
+        reduce((items, result) => [...items, ...result.items], [] as unknown[]),
+        map(items => {
+          const byIdentity = new Map<string, Descriptor>();
+          for (const descriptor of normalizeCatalog(kind, items)) byIdentity.set(`${descriptor.id}@${descriptor.version}`, descriptor);
+          return [...byIdentity.values()];
+        })
+      ).subscribe(subscriber);
+      return () => subscription.unsubscribe();
     });
   }
-
-  // Get datasets from API - expects YAML format: { data: { dataset_descriptors: [...] } }
-  getDatasets(token: string): Observable<any[]> {
-    console.log('Sending dataset request body:', this.DATASET_REQUEST_BODY);
-    return this.http.post<any>(`${this.baseUrl}/dataset_version/fetch`, this.DATASET_REQUEST_BODY, { headers: this.getHeaders(token) }).pipe(
-      map(response => {
-        // Handle YAML format: { success: true, message: "...", status_code: 200, data: { dataset_descriptors: [...] } }
-        if (response && response.data && response.data.dataset_descriptors) {
-          return response.data.dataset_descriptors;
-        } else {
-          console.warn('Unexpected dataset response format:', response);
-          return [];
-        }
-      }),
-      catchError(error => {
-        console.error('Error fetching datasets:', error);
-        return of([]);
-      })
-    );
-  }
-
-  // Get models from API - expects YAML format: { data: { modl_descriptors: [...] } }
-  getModels(token: string): Observable<any[]> {
-    console.log('Sending model request body:', this.MODEL_REQUEST_BODY);
-    return this.http.post<any>(`${this.baseUrl}/model_version/fetch`, this.MODEL_REQUEST_BODY, { headers: this.getHeaders(token) }).pipe(
-      map(response => {
-        if (response && response.data && response.data.modl_descriptors) {
-          // Map the response to include task information
-          return response.data.modl_descriptors.map((model: any) => ({
-            ...model,
-            tasks: model.version?.tasks || []
-          }));
-        } else {
-          console.warn('Unexpected model response format:', response);
-          return [];
-        }
-      }),
-      catchError(error => {
-        console.error('Error fetching models:', error);
-        return of([]);
-      })
-    );
-  }
-
-  // Get metrics from API - expects YAML format: { data: { metric_descriptors: [...] } }
-  getMetrics(token: string): Observable<any[]> {
-    console.log('Sending metric request body:', this.METRIC_REQUEST_BODY);
-    return this.http.post<any>(`${this.baseUrl}/metric_version/fetch`, this.METRIC_REQUEST_BODY, { headers: this.getHeaders(token) }).pipe(
-      map(response => {
-        if (response && response.data && response.data.metric_descriptors) {
-          // Map the response to include task information
-          return response.data.metric_descriptors.map((metric: any) => ({
-            ...metric,
-            tasks: metric.version?.tasks || []
-          }));
-        } else {
-          console.warn('Unexpected metric response format:', response);
-          return [];
-        }
-      }),
-      catchError(error => {
-        console.error('Error fetching metrics:', error);
-        return of([]);
-      })
-    );
-  }
-
-  // Get tasks from API - returns full task descriptors (task_id, task_name, task_version_info_list)
-  // Same pattern as datasets, models, metrics
-  getTasks(token: string): Observable<any[]> {
-    return this.http.post<ApiResponse<{ task_descriptors: any[] }>>(`${this.baseUrl}/tasks/fetch`, this.TASKS_REQUEST_BODY, { headers: this.getHeaders(token) })
-      .pipe(
-        map(response => {
-          if (response?.data?.task_descriptors) {
-            return response.data.task_descriptors.map((t: any) => {
-              if (typeof t !== 'object' || t === null) {
-                return { task_id: String(t), task_name: String(t), task_version_info_list: [] };
-              }
-              return {
-                task_id: t.task_id ?? t.id ?? t.taskId,
-                task_name: t.task_name ?? t.name ?? t.taskName ?? String(t.task_id ?? t.id ?? ''),
-                task_version_info_list: t.task_version_info_list ?? t.version_info_list ?? t.versions ?? []
-              };
-            });
-          }
-          console.warn('Unexpected task response format:', response);
-          return [];
-        }),
-        catchError(error => {
-          console.error('Error fetching tasks:', error);
-          return of([]);
-        })
-      );
-  }
-
-
-
-  // Alternative endpoints if your API uses different paths
-  // getDatasetsYaml(): Observable<any> {
-  //   return this.http.get<any>(`${this.baseUrl}/datasets-yaml`, { headers: this.headers }).pipe(
-  //     catchError(error => {
-  //       console.error('Error fetching datasets YAML:', error);
-  //       return of(null);
-  //     })
-  //   );
-  // }
-
-  // getModelsYaml(): Observable<any> {
-  //   return this.http.get<any>(`${this.baseUrl}/models-yaml`, { headers: this.headers }).pipe(
-  //     catchError(error => {
-  //       console.error('Error fetching models YAML:', error);
-  //       return of(null);
-  //     })
-  //   );
-  // }
-
-  // getMetricsYaml(): Observable<any> {
-  //   return this.http.get<any>(`${this.baseUrl}/metrics-yaml`, { headers: this.headers }).pipe(
-  //     catchError(error => {
-  //       console.error('Error fetching metrics YAML:', error);
-  //       return of(null);
-  //     })
-  //   );
-  // }
-} 
+}

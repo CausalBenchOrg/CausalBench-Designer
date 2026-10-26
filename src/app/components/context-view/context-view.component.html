@@ -1,36 +1,36 @@
-<div class="context-header-bar">
-  <label for="taskTypeDropdown">Task Type:</label>
-  <select id="taskTypeDropdown" 
-          [(ngModel)]="selectedTaskId" 
-          (ngModelChange)="onTaskIdChange($event)"
-          [disabled]="loadingTasks"
-          class="task-type-dropdown">
-    <option value="">{{ loadingTasks ? 'Loading tasks...' : 'Please select a task:' }}</option>
-    <option *ngFor="let task of availableTasks" [value]="task.task_id">{{ task.task_name }}</option>
-  </select>
-  <select *ngIf="selectedTaskId && taskVersions.length > 0"
-          id="taskVersionDropdown"
-          [(ngModel)]="selectedTaskVersion"
-          (change)="onTaskVersionChange($event)"
-          class="task-version-dropdown">
-    <option value="">Select version</option>
-    <option *ngFor="let ver of taskVersions" [value]="ver">{{ ver }}</option>
-  </select>
+<div class="component-columns" [class.canvas]="canvasMode">
+  @for (group of groups; track trackGroup($index, group)) {
+    <section class="component-column" [class]="'component-column ' + group.className">
+      <h3>{{ group.label }} <span class="count">{{ group.entries.length }}</span></h3>
+      @if (!group.entries.length) {
+        <div class="empty-component"><span aria-hidden="true">+</span><p>{{ group.empty }}</p><p class="small">Add from the component catalog.</p></div>
+      }
+      @for (entry of group.entries; track trackEntry($index, entry)) {
+        <button class="component-node" (click)="editEntry.emit(entry)" [attr.aria-label]="'Edit ' + entry.kind + ' ' + entry.descriptor.name">
+          <span class="node-type">{{ entry.kind }}</span><strong>{{ entry.descriptor.name }}</strong><span class="small muted">#{{ entry.descriptor.id }} · v{{ entry.descriptor.version }}</span>
+          @if (entry.kind !== 'dataset') {
+            <span class="badge" [class.invalid]="match(entry) === 'mismatch'" [class.warning]="match(entry) === 'unknown'" [class.success]="match(entry) === 'match'">Task: {{ match(entry) }}</span>
+          }
+          @if (entry.kind === 'dataset') {
+            @for (pair of mapping(entry); track trackMapping($index, pair)) {
+              <span class="wire small"><code>{{ pair.alias }}</code><span aria-hidden="true"> → </span><code>{{ pair.input }}</code></span>
+              }@if (!mapping(entry).length) {
+              <span class="small muted">Mapping incomplete</span>
+            }
+          }
+          @if (entry.kind !== 'dataset') {
+            <span class="small">{{ entry.configurations.length }} explicit configuration{{ entry.configurations.length === 1 ? '' : 's' }}</span>
+            }<span class="edit-hint">Edit configuration →</span>
+          </button>
+        }
+        @if (canvasMode && group.className === 'model' && outputs.length) {
+          <div class="task-output"><p class="eyebrow">MODEL → METRIC</p>@for (output of outputs; track trackOutput($index, output)) {
+          <p class="small"><code>{{ output.name }}</code> → {{ output.name }}<br><span class="muted">{{ output.type }}</span></p>
+        }</div>
+      }
+    </section>
+  }
 </div>
-<div class="context-views-row">
-  <app-dataset-view
-    [datasets]="datasets"
-    [loading]="loadingDatasets"
-    (itemSelected)="itemSelected.emit($event)">
-  </app-dataset-view>
-  <app-model-view
-    [models]="filteredModels"
-    [loading]="loadingModels"
-    (itemSelected)="itemSelected.emit($event)">
-  </app-model-view>
-  <app-metric-view
-    [metrics]="filteredMetrics"
-    [loading]="loadingMetrics"
-    (itemSelected)="itemSelected.emit($event)">
-  </app-metric-view>
-</div> 
+@if (canvasMode) {
+  <p class="small muted wiring-note">Dataset wires show alias → task input. Models must return the task's metric input keys unchanged. Every dataset–model configuration pair is evaluated by all metric configurations. Wiring follows the task contract automatically.</p>
+}
