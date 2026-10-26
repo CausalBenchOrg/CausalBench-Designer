@@ -1,10 +1,13 @@
-import { Component, ElementRef, EventEmitter, Input, OnChanges, OnDestroy, Output, ViewChild } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, EventEmitter, Input, OnChanges, OnDestroy, Output, PendingTasks, ViewChild } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { ContextRecipe, ContextSource, MAX_ARCHIVE_BYTES, OpenedContext } from '../../domain/context-import';
 import { ContextLibraryService, contextLoadError } from '../../services/context-library.service';
 import { TokenService } from '../../services/token.service';
 
-@Component({ selector: 'app-open-context', templateUrl: './open-context.component.html', styleUrls: ['./open-context.component.scss'] })
+@Component({
+    selector: 'app-open-context', templateUrl: './open-context.component.html', styleUrls: ['./open-context.component.scss'],
+    standalone: false
+})
 export class OpenContextComponent implements OnChanges, OnDestroy {
   @Input() showDialog = false;
   @Input() replacesDraft = false;
@@ -20,7 +23,8 @@ export class OpenContextComponent implements OnChanges, OnDestroy {
   private generation = 0;
   private download?: Subscription;
   private tokenSubscription: Subscription;
-  constructor(public library: ContextLibraryService, public tokens: TokenService) {
+  constructor(public library: ContextLibraryService, public tokens: TokenService,
+    private pendingTasks: PendingTasks, private changeDetector: ChangeDetectorRef) {
     this.tokenSubscription = tokens.token$.subscribe(() => {
       if (this.loading || this.preview?.source.reference) this.cancelPreview();
       this.selection = '';
@@ -51,6 +55,7 @@ export class OpenContextComponent implements OnChanges, OnDestroy {
     if (!file) return;
     this.cancelPreview(); this.selection = ''; this.loading = true;
     const generation = this.generation;
+    const complete = this.pendingTasks.add();
     try {
       if (file.size > MAX_ARCHIVE_BYTES) throw new Error('Choose a context file or archive no larger than 8 MB.');
       const bytes = new Uint8Array(await file.arrayBuffer());
@@ -58,16 +63,18 @@ export class OpenContextComponent implements OnChanges, OnDestroy {
       const recipe = reader.readContext(bytes);
       if (generation === this.generation) this.ready(recipe, { label: file.name });
     } catch (error) { if (generation === this.generation) { this.loading = false; this.error = contextLoadError(error); } }
-    finally { input.value = ''; }
+    finally { input.value = ''; this.changeDetector.markForCheck(); complete(); }
   }
   async previewText() {
     this.cancelPreview(); this.selection = ''; this.loading = true;
     const generation = this.generation;
+    const complete = this.pendingTasks.add();
     try {
       const reader = await import('../../domain/context-reader');
       const recipe = reader.parseContext(this.text);
       if (generation === this.generation) this.ready(recipe, { label: 'Pasted context' });
     } catch (error) { if (generation === this.generation) { this.loading = false; this.error = contextLoadError(error); } }
+    finally { this.changeDetector.markForCheck(); complete(); }
   }
   private ready(recipe: ContextRecipe, source: ContextSource) { this.preview = { recipe, source }; this.loading = false; this.error = ''; }
   open() { if (this.preview && !this.loading) this.contextOpened.emit(this.preview); }

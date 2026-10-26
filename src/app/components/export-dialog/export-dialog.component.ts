@@ -2,7 +2,10 @@ import { AfterViewInit, Component, ElementRef, EventEmitter, Input, OnChanges, O
 import { Draft, counts, emptyDraft, validateDraft } from '../../domain/context';
 import { serializePython, serializeYaml } from '../../domain/serialize';
 
-@Component({ selector: 'app-export-dialog', templateUrl: './export-dialog.component.html', styleUrls: ['./export-dialog.component.scss'] })
+@Component({
+    selector: 'app-export-dialog', templateUrl: './export-dialog.component.html', styleUrls: ['./export-dialog.component.scss'],
+    standalone: false
+})
 export class ExportDialogComponent implements OnChanges, AfterViewInit {
   @Input() showDialog = false;
   @Input() draft: Draft = emptyDraft();

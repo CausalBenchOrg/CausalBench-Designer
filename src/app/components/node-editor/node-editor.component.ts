@@ -3,7 +3,10 @@ import { Draft, Entry, emptyDraft } from '../../domain/context';
 import { BlueprintEdge, BlueprintKind, BlueprintNode, BlueprintStore } from '../../services/blueprint-store.service';
 
 /** Restores the original SVG blueprint interactions using the current context editor and theme. */
-@Component({ selector: 'app-node-editor', templateUrl: './node-editor.component.html', styleUrls: ['./node-editor.component.scss'] })
+@Component({
+    selector: 'app-node-editor', templateUrl: './node-editor.component.html', styleUrls: ['./node-editor.component.scss'],
+    standalone: false
+})
 export class NodeEditorComponent implements DoCheck {
   @Input() draft: Draft = emptyDraft();
   @Output() configureNode = new EventEmitter<BlueprintNode>();

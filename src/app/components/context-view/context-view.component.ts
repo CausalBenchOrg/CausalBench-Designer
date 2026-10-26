@@ -1,7 +1,10 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { Draft, Entry, compatibility, emptyDraft } from '../../domain/context';
 
-@Component({ selector: 'app-context-view', templateUrl: './context-view.component.html', styleUrls: ['./context-view.component.scss'] })
+@Component({
+    selector: 'app-context-view', templateUrl: './context-view.component.html', styleUrls: ['./context-view.component.scss'],
+    standalone: false
+})
 export class ContextViewComponent {
   @Input() draft: Draft = emptyDraft();
   @Input() canvasMode = false;

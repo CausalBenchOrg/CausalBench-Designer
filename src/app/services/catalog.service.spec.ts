@@ -1,15 +1,16 @@
 import { TestBed } from '@angular/core/testing';
-import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { CatalogService } from './catalog.service';
 import { TokenService } from './token.service';
 import { REGISTRY_CONFIG } from './api.service';
 import { supervisedFixture } from '../../../tests/fixtures/contexts';
+import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 
 describe('Catalog session lifecycle', () => {
   let catalog: CatalogService, tokens: TokenService, http: HttpTestingController;
   beforeEach(() => {
     sessionStorage.removeItem('token');
-    TestBed.configureTestingModule({ imports: [HttpClientTestingModule], providers: [{ provide: REGISTRY_CONFIG, useValue: { baseUrl: '/registry', pageSize: 100, maxPages: 3 } }] });
+    TestBed.configureTestingModule({ imports: [], providers: [{ provide: REGISTRY_CONFIG, useValue: { baseUrl: '/registry', pageSize: 100, maxPages: 3 } }, provideHttpClient(withInterceptorsFromDi()), provideHttpClientTesting()] });
     tokens = TestBed.inject(TokenService); catalog = TestBed.inject(CatalogService); http = TestBed.inject(HttpTestingController);
   });
   afterEach(() => { catalog.ngOnDestroy(); tokens.ngOnDestroy(); sessionStorage.removeItem('token'); http.verify(); });

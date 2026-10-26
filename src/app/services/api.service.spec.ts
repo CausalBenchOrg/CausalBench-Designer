@@ -1,13 +1,14 @@
 import { TestBed, fakeAsync, tick } from '@angular/core/testing';
-import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ApiService, REGISTRY_CONFIG } from './api.service';
+import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 
 const task = (id: number) => ({ task_id: id, task_name: `task ${id}`, task_version_info_list: [{ version: { version_number: 1 } }] });
 describe('Registry fetch boundaries', () => {
   let api: ApiService;
   let http: HttpTestingController;
   beforeEach(() => {
-    TestBed.configureTestingModule({ imports: [HttpClientTestingModule], providers: [{ provide: REGISTRY_CONFIG, useValue: { baseUrl: '/registry', pageSize: 100, maxPages: 3 } }] });
+    TestBed.configureTestingModule({ imports: [], providers: [{ provide: REGISTRY_CONFIG, useValue: { baseUrl: '/registry', pageSize: 100, maxPages: 3 } }, provideHttpClient(withInterceptorsFromDi()), provideHttpClientTesting()] });
     api = TestBed.inject(ApiService); http = TestBed.inject(HttpTestingController);
   });
   afterEach(() => http.verify());

@@ -1,11 +1,12 @@
 import { TestBed } from '@angular/core/testing';
-import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { BehaviorSubject, firstValueFrom } from 'rxjs';
 import { ContextLibraryService } from './context-library.service';
 import { TokenService } from './token.service';
 import { REGISTRY_CONFIG } from './api.service';
 import { serializeYaml } from '../domain/serialize';
 import { supervisedFixture } from '../../../tests/fixtures/contexts';
+import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 
 const token = `header.${btoa(JSON.stringify({ sub: '9182' }))}.signature`;
 const record = (version: number) => ({ pipeline_version_info: [{ pipeline_id: 8, pipeline_version: version, pipeline_name: `Saved v${version}` }] });
@@ -13,9 +14,11 @@ describe('Saved-context registry boundary', () => {
   let library: ContextLibraryService, http: HttpTestingController, session: BehaviorSubject<string>;
   beforeEach(() => {
     session = new BehaviorSubject(token);
-    TestBed.configureTestingModule({ imports: [HttpClientTestingModule], providers: [
-      { provide: REGISTRY_CONFIG, useValue: { baseUrl: '/registry', pageSize: 100, maxPages: 3 } },
-      { provide: TokenService, useValue: { token$: session } }
+    TestBed.configureTestingModule({ imports: [], providers: [
+        { provide: REGISTRY_CONFIG, useValue: { baseUrl: '/registry', pageSize: 100, maxPages: 3 } },
+        { provide: TokenService, useValue: { token$: session } },
+        provideHttpClient(withInterceptorsFromDi()),
+        provideHttpClientTesting()
     ] });
     library = TestBed.inject(ContextLibraryService); http = TestBed.inject(HttpTestingController);
   });

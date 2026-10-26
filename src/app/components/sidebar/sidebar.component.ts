@@ -1,7 +1,10 @@
 import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { Configuration, Descriptor, Entry, Parameter, Value, clone, compatibility, datasetInputs, isValue, newConfiguration, runtimeType, valueError } from '../../domain/context';
 
-@Component({ selector: 'app-sidebar', templateUrl: './sidebar.component.html', styleUrls: ['./sidebar.component.scss'] })
+@Component({
+    selector: 'app-sidebar', templateUrl: './sidebar.component.html', styleUrls: ['./sidebar.component.scss'],
+    standalone: false
+})
 export class SidebarComponent implements OnChanges {
   @Input({ required: true }) entry!: Entry;
   @Input() task: Descriptor | null = null;

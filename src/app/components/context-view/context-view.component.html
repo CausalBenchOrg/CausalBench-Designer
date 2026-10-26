@@ -1,14 +1,36 @@
 <div class="component-columns" [class.canvas]="canvasMode">
-  <section class="component-column" *ngFor="let group of groups; trackBy: trackGroup" [class]="'component-column ' + group.className">
-    <h3>{{ group.label }} <span class="count">{{ group.entries.length }}</span></h3>
-    <div class="empty-component" *ngIf="!group.entries.length"><span aria-hidden="true">+</span><p>{{ group.empty }}</p><p class="small">Add from the component catalog.</p></div>
-    <button class="component-node" *ngFor="let entry of group.entries; trackBy: trackEntry" (click)="editEntry.emit(entry)" [attr.aria-label]="'Edit ' + entry.kind + ' ' + entry.descriptor.name">
-      <span class="node-type">{{ entry.kind }}</span><strong>{{ entry.descriptor.name }}</strong><span class="small muted">#{{ entry.descriptor.id }} · v{{ entry.descriptor.version }}</span>
-      <span class="badge" *ngIf="entry.kind !== 'dataset'" [class.invalid]="match(entry) === 'mismatch'" [class.warning]="match(entry) === 'unknown'" [class.success]="match(entry) === 'match'">Task: {{ match(entry) }}</span>
-      <ng-container *ngIf="entry.kind === 'dataset'"><span class="wire small" *ngFor="let pair of mapping(entry); trackBy: trackMapping"><code>{{ pair.alias }}</code><span aria-hidden="true"> → </span><code>{{ pair.input }}</code></span><span class="small muted" *ngIf="!mapping(entry).length">Mapping incomplete</span></ng-container>
-      <span class="small" *ngIf="entry.kind !== 'dataset'">{{ entry.configurations.length }} explicit configuration{{ entry.configurations.length === 1 ? '' : 's' }}</span><span class="edit-hint">Edit configuration →</span>
-    </button>
-    <div class="task-output" *ngIf="canvasMode && group.className === 'model' && outputs.length"><p class="eyebrow">MODEL → METRIC</p><p class="small" *ngFor="let output of outputs; trackBy: trackOutput"><code>{{ output.name }}</code> → {{ output.name }}<br><span class="muted">{{ output.type }}</span></p></div>
-  </section>
+  @for (group of groups; track trackGroup($index, group)) {
+    <section class="component-column" [class]="'component-column ' + group.className">
+      <h3>{{ group.label }} <span class="count">{{ group.entries.length }}</span></h3>
+      @if (!group.entries.length) {
+        <div class="empty-component"><span aria-hidden="true">+</span><p>{{ group.empty }}</p><p class="small">Add from the component catalog.</p></div>
+      }
+      @for (entry of group.entries; track trackEntry($index, entry)) {
+        <button class="component-node" (click)="editEntry.emit(entry)" [attr.aria-label]="'Edit ' + entry.kind + ' ' + entry.descriptor.name">
+          <span class="node-type">{{ entry.kind }}</span><strong>{{ entry.descriptor.name }}</strong><span class="small muted">#{{ entry.descriptor.id }} · v{{ entry.descriptor.version }}</span>
+          @if (entry.kind !== 'dataset') {
+            <span class="badge" [class.invalid]="match(entry) === 'mismatch'" [class.warning]="match(entry) === 'unknown'" [class.success]="match(entry) === 'match'">Task: {{ match(entry) }}</span>
+          }
+          @if (entry.kind === 'dataset') {
+            @for (pair of mapping(entry); track trackMapping($index, pair)) {
+              <span class="wire small"><code>{{ pair.alias }}</code><span aria-hidden="true"> → </span><code>{{ pair.input }}</code></span>
+              }@if (!mapping(entry).length) {
+              <span class="small muted">Mapping incomplete</span>
+            }
+          }
+          @if (entry.kind !== 'dataset') {
+            <span class="small">{{ entry.configurations.length }} explicit configuration{{ entry.configurations.length === 1 ? '' : 's' }}</span>
+            }<span class="edit-hint">Edit configuration →</span>
+          </button>
+        }
+        @if (canvasMode && group.className === 'model' && outputs.length) {
+          <div class="task-output"><p class="eyebrow">MODEL → METRIC</p>@for (output of outputs; track trackOutput($index, output)) {
+          <p class="small"><code>{{ output.name }}</code> → {{ output.name }}<br><span class="muted">{{ output.type }}</span></p>
+        }</div>
+      }
+    </section>
+  }
 </div>
-<p class="small muted wiring-note" *ngIf="canvasMode">Dataset wires show alias → task input. Models must return the task's metric input keys unchanged. Every dataset–model configuration pair is evaluated by all metric configurations. Wiring follows the task contract automatically.</p>
+@if (canvasMode) {
+  <p class="small muted wiring-note">Dataset wires show alias → task input. Models must return the task's metric input keys unchanged. Every dataset–model configuration pair is evaluated by all metric configurations. Wiring follows the task contract automatically.</p>
+}

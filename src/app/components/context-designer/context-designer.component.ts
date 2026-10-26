@@ -10,9 +10,10 @@ import { BlueprintNode, BlueprintStore } from '../../services/blueprint-store.se
 import { OpenedContext, hydrateContext } from '../../domain/context-import';
 
 @Component({
-  selector: 'app-context-designer',
-  templateUrl: './context-designer.component.html',
-  styleUrls: ['./context-designer.component.scss']
+    selector: 'app-context-designer',
+    templateUrl: './context-designer.component.html',
+    styleUrls: ['./context-designer.component.scss'],
+    standalone: false
 })
 export class ContextDesignerComponent implements DoCheck {
   readonly blueprintMode: boolean;

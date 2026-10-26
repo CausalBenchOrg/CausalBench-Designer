@@ -3,19 +3,41 @@
   <p class="muted small">Open a registered context or a saved recipe. Changes are edited locally and can be exported.</p>
   <section aria-label="Saved registry contexts">
     <label for="context-search">Find a saved context</label><input id="context-search" type="search" [(ngModel)]="search" (ngModelChange)="selection = ''; cancelPreview()" placeholder="Context name, ID, or version">
-    <label for="saved-context">Saved context and version</label><select id="saved-context" [(ngModel)]="selection" (ngModelChange)="selectContext()"><option value="">Select a context…</option><option *ngFor="let context of options" [value]="key(context)">{{ context.name }} · #{{ context.id }} · v{{ context.version }}</option></select>
-    <p class="muted small" role="status" *ngIf="library.status === 'loading'">Loading saved contexts…</p>
-    <p class="runtime-note" *ngIf="library.status === 'disconnected'">Connect a registry session in the designer to browse saved contexts, or open a file below.</p>
-    <p class="muted small" *ngIf="library.status === 'ready' && !library.items.length">No saved contexts are available to this session.</p>
-    <p class="muted small" *ngIf="library.status === 'ready' && library.items.length && !options.length">No matching saved contexts.</p>
-    <p class="error-box" role="alert" *ngIf="library.error">{{ library.error }}</p>
-    <button class="text-button" (click)="refreshLibrary()" [disabled]="!tokens.hasToken() || library.status === 'loading'">Refresh saved contexts</button>
-  </section>
-  <section class="file-source" aria-label="Open a context file"><label for="context-file">Context file</label><input id="context-file" type="file" accept=".yaml,.yml,.json,.zip" (change)="readFile($event)"><p class="muted small">YAML or JSON recipe (up to 2 MB), or a context ZIP containing config.yaml (up to 8 MB).</p></section>
-  <details class="paste-source"><summary>Paste YAML or JSON</summary><label for="context-document">Saved context recipe</label><textarea id="context-document" class="code-input" [(ngModel)]="text" (ngModelChange)="cancelPreview()" rows="9" spellcheck="false" placeholder="type: context"></textarea><button (click)="previewText()" [disabled]="!text.trim() || loading">Preview context</button></details>
-  <p role="status" class="runtime-note" *ngIf="loading">Reading context… The current draft is retained until you open the preview.</p>
-  <p class="error-box" role="alert" *ngIf="error">{{ error }}</p>
-  <section class="context-preview" *ngIf="preview as loaded" aria-label="Context preview"><p class="eyebrow">READY TO OPEN</p><h3>{{ loaded.recipe.name || 'Unnamed context' }}</h3><p class="small muted" *ngIf="loaded.source.reference as ref">Context #{{ ref.id }} · v{{ ref.version }}</p><p class="small">{{ loaded.recipe.description }}</p><p class="small">Task #{{ loaded.recipe.task.id }} · v{{ loaded.recipe.task.version }}</p><p class="small">{{ loaded.recipe.datasets.length }} dataset entries · {{ loaded.recipe.models.length }} model configurations · {{ loaded.recipe.metrics.length }} metric configurations</p><p class="small muted">Mappings and saved settings will be restored. Missing component metadata stays visible for completion before validated export.</p></section>
-  <p class="runtime-note" *ngIf="preview && replacesDraft">Opening this context replaces the current recipe, unapplied edits, and Blueprint sketches. Cancel keeps your current work.</p>
-  <div class="actions"><button (click)="close()">Cancel opening</button><button class="primary" (click)="open()" [disabled]="!preview || loading">{{ replacesDraft ? 'Replace draft & open' : 'Open in designer' }}</button></div>
+    <label for="saved-context">Saved context and version</label><select id="saved-context" [(ngModel)]="selection" (ngModelChange)="selectContext()"><option value="">Select a context…</option>@for (context of options; track key(context)) {
+    <option [value]="key(context)">{{ context.name }} · #{{ context.id }} · v{{ context.version }}</option>
+  }</select>
+  @if (library.status === 'loading') {
+    <p class="muted small" role="status">Loading saved contexts…</p>
+  }
+  @if (library.status === 'disconnected') {
+    <p class="runtime-note">Connect a registry session in the designer to browse saved contexts, or open a file below.</p>
+  }
+  @if (library.status === 'ready' && !library.items.length) {
+    <p class="muted small">No saved contexts are available to this session.</p>
+  }
+  @if (library.status === 'ready' && library.items.length && !options.length) {
+    <p class="muted small">No matching saved contexts.</p>
+  }
+  @if (library.error) {
+    <p class="error-box" role="alert">{{ library.error }}</p>
+  }
+  <button class="text-button" (click)="refreshLibrary()" [disabled]="!tokens.hasToken() || library.status === 'loading'">Refresh saved contexts</button>
+</section>
+<section class="file-source" aria-label="Open a context file"><label for="context-file">Context file</label><input id="context-file" type="file" accept=".yaml,.yml,.json,.zip" (change)="readFile($event)"><p class="muted small">YAML or JSON recipe (up to 2 MB), or a context ZIP containing config.yaml (up to 8 MB).</p></section>
+<details class="paste-source"><summary>Paste YAML or JSON</summary><label for="context-document">Saved context recipe</label><textarea id="context-document" class="code-input" [(ngModel)]="text" (ngModelChange)="cancelPreview()" rows="9" spellcheck="false" placeholder="type: context"></textarea><button (click)="previewText()" [disabled]="!text.trim() || loading">Preview context</button></details>
+@if (loading) {
+  <p role="status" class="runtime-note">Reading context… The current draft is retained until you open the preview.</p>
+}
+@if (error) {
+  <p class="error-box" role="alert">{{ error }}</p>
+}
+@if (preview; as loaded) {
+  <section class="context-preview" aria-label="Context preview"><p class="eyebrow">READY TO OPEN</p><h3>{{ loaded.recipe.name || 'Unnamed context' }}</h3>@if (loaded.source.reference; as ref) {
+  <p class="small muted">Context #{{ ref.id }} · v{{ ref.version }}</p>
+  }<p class="small">{{ loaded.recipe.description }}</p><p class="small">Task #{{ loaded.recipe.task.id }} · v{{ loaded.recipe.task.version }}</p><p class="small">{{ loaded.recipe.datasets.length }} dataset entries · {{ loaded.recipe.models.length }} model configurations · {{ loaded.recipe.metrics.length }} metric configurations</p><p class="small muted">Mappings and saved settings will be restored. Missing component metadata stays visible for completion before validated export.</p></section>
+}
+@if (preview && replacesDraft) {
+  <p class="runtime-note">Opening this context replaces the current recipe, unapplied edits, and Blueprint sketches. Cancel keeps your current work.</p>
+}
+<div class="actions"><button (click)="close()">Cancel opening</button><button class="primary" (click)="open()" [disabled]="!preview || loading">{{ replacesDraft ? 'Replace draft & open' : 'Open in designer' }}</button></div>
 </dialog>

@@ -83,7 +83,7 @@ To edit the example, connect a registry session, choose **Open context**, select
 
 ## Development and verification
 
-The locked toolchain is Angular 17.3.17 and TypeScript 5.2.2. This refresh was verified on Node 24.12.0/npm 11.6.2 without upgrading the framework/toolchain. Context import adds pinned `yaml@2.9.1` and `fflate@0.8.2`, loaded only when reading a context.
+The locked toolchain is Angular 21.2.25, Angular CLI/build 21.2.28, and TypeScript 5.9.3. Use Node 22.12+ (22.x) or Node 24.x; verification uses Node 24.12.0/npm 11.6.2. The application uses Angular's current application builder, compiled templates, and Zone.js change detection. Context import uses pinned `yaml@2.9.1` and patched `fflate@0.8.3`, loaded only when reading a context.
 
 ```sh
 npm ci
@@ -98,11 +98,14 @@ npm run build
 npm run build -- --output-path /tmp/causalbench-designer-build
 npm test -- --watch=false --browsers=ChromeHeadless
 npm run test:exports
+npm run audit:production
 ```
 
 Browser tests require Chrome (`CHROME_BIN` may be needed). Export checks require Python 3 with PyYAML, parse Python without importing/executing components, and compare YAML and Python literal semantics against synthetic fixtures. Scientific notation and negative zero are included. See [tests/fixtures](tests/fixtures/README.md) for fixture provenance. No live registry IDs or publication calls are used in regression tests. The 78-test suite includes package/range reads, literal task parsing, exact module resolution, access failures/retry, session cancellation, preserved edits, suggested mappings, recipe arrows, and the existing import/editor/export coverage. Connected-Chrome QA verifies the Tuning PC context resolves automatically and exports the exact preserved recipe without manual descriptors; see the handoff for earlier theme/layout and runtime evidence.
 
-The original favicon configuration referenced an absent `src/favicon.ico`; the build now copies the existing `src/assets` favicons only. Deployment assets in `docs/` are a separate release change and have not been regenerated or published.
+To refresh the GitHub Pages files for `https://designer.causalbench.org`, run `npm run build:pages` and commit the generated `docs/` files with the source and lockfile. In repository Settings → Pages, publish from the deployment branch's `/docs` folder. This build includes `CNAME`, `.nojekyll`, and a `404.html` entry point for direct visits to Angular routes. It replaces the old deployment bundles; `npm run build` continues to write only to `dist/causalbench-designer`. Building locally does not publish the site.
+
+The 2026-10-26 dependency audit reports zero known vulnerabilities across production and development dependencies. A scoped npm override pins the build tool's `undici` to patched `7.30.1` because Angular build 21.2.28 pins vulnerable `7.29.1`; review/remove this override when Angular updates its dependency. `npm run audit:production` fails for high or critical advisories in production dependencies and runs automatically before `npm run build:pages` (network access required). Audit results reflect the advisory database at the time of the check and should be rerun before releases.
 
 ## Source layout
 
@@ -114,4 +117,4 @@ The original favicon configuration referenced an absent `src/favicon.ico`; the b
 | [scripts](scripts/) | Independent Python syntax/literal and YAML round-trip checks. |
 | [tests/fixtures](tests/fixtures/) | Synthetic documentation-derived contracts and values. |
 | [cb-docs](cb-docs/) | Supplied CB documentation and supplemental examples, preserved unchanged. |
-| [docs](docs/) | Previously generated website assets; release output is managed separately. |
+| [docs](docs/) | Generated GitHub Pages website; refresh with `npm run build:pages`. |

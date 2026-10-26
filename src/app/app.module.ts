@@ -1,6 +1,6 @@
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
-import { HttpClientModule } from '@angular/common/http';
+import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Routes } from '@angular/router';
 import { AppComponent } from './app.component';
@@ -18,7 +18,8 @@ const routes: Routes = [
 ];
 @NgModule({
   declarations: [AppComponent, SidebarComponent, ExportDialogComponent, ContextViewComponent, NodeEditorComponent, ContextDesignerComponent, OpenContextComponent],
-  imports: [BrowserModule, HttpClientModule, FormsModule, RouterModule.forRoot(routes)],
+  imports: [BrowserModule, FormsModule, RouterModule.forRoot(routes)],
+  providers: [provideHttpClient(withInterceptorsFromDi())],
   bootstrap: [AppComponent]
 })
 export class AppModule {}

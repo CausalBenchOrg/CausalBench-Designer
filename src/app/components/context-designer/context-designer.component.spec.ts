@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { NgZone } from '@angular/core';
-import { HttpClientTestingModule } from '@angular/common/http/testing';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { BehaviorSubject } from 'rxjs';
 import { AppModule } from '../../app.module';
 import { AppComponent } from '../../app.component';
@@ -13,12 +13,13 @@ import { expandedFixture, supervisedFixture } from '../../../../tests/fixtures/c
 import { contextData } from '../../domain/serialize';
 import { serializeYaml } from '../../domain/serialize';
 import { BlueprintStore } from '../../services/blueprint-store.service';
+import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 
 const disconnected = { token$: new BehaviorSubject(''), status$: new BehaviorSubject('Disconnected'), hasToken: () => false };
 describe('Designer browser workflow', () => {
   let fixture: ComponentFixture<ContextDesignerComponent>;
   beforeEach(async () => {
-    await TestBed.configureTestingModule({ imports: [AppModule, HttpClientTestingModule], providers: [{ provide: TokenService, useValue: disconnected }] }).compileComponents();
+    await TestBed.configureTestingModule({ imports: [AppModule], providers: [{ provide: TokenService, useValue: disconnected }, provideHttpClient(withInterceptorsFromDi()), provideHttpClientTesting()] }).compileComponents();
     fixture = TestBed.createComponent(ContextDesignerComponent); fixture.detectChanges(); await fixture.whenStable();
   });
   afterEach(() => fixture.destroy());

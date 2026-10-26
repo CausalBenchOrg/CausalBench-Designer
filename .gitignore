@@ -1,8 +1,12 @@
 /.angular/
 /.node_modules/
-node_modules
+/node_modules
 /dist/
 /out-tsc/
 /coverage/
-/cb-docs/
+/cb-docsx/
 /design-docs/
+/examples/
+/reports/
+/scripts/
+# /docs
