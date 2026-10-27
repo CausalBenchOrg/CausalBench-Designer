@@ -3,7 +3,6 @@
 .model h3 { border-color: var(--model-color); } .metric h3 { border-color: var(--metric-color); }
 .count { background: var(--badge); color: var(--muted); border-radius: 20px; font-size: 10px; padding: 1px 6px; }
 .empty-component { border: 1px dashed var(--control-line); border-radius: 8px; text-align: center; padding: 22px 12px; color: var(--muted); min-height: 160px; font-size: 12px; }
-.empty-component > span { font-size: 25px; color: var(--muted); }
 .component-node { display: flex; flex-direction: column; text-align: left; gap: 7px; padding: 14px; margin-bottom: 12px; width: 100%; min-width: 0; overflow-wrap: anywhere; font-weight: 400; }
 .component-node strong { font-size: 14px; }
 .node-type { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: var(--accent); }

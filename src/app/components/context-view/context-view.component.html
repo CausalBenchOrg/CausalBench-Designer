@@ -3,7 +3,7 @@
     <section class="component-column" [class]="'component-column ' + group.className">
       <h3>{{ group.label }} <span class="count">{{ group.entries.length }}</span></h3>
       @if (!group.entries.length) {
-        <div class="empty-component"><span aria-hidden="true">+</span><p>{{ group.empty }}</p><p class="small">Add from the component catalog.</p></div>
+        <div class="empty-component"><p>{{ group.empty }}</p><p class="small">Add from the component catalog.</p></div>
       }
       @for (entry of group.entries; track trackEntry($index, entry)) {
         <button class="component-node" (click)="editEntry.emit(entry)" [attr.aria-label]="'Edit ' + entry.kind + ' ' + entry.descriptor.name">

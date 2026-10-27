@@ -110,7 +110,7 @@ export function validateDraft(draft: Draft): Issue[] {
   const task = draft.task;
   if (!task) add('task', 'Select exactly one task and version.');
   else {
-    if (task.kind !== 'task' || !validIdentity(task.id) || !validIdentity(task.version)) add('task', 'A positive registry ID and version are required.');
+    if (task.kind !== 'task' || !validIdentity(task.id) || !validIdentity(task.version)) add('task', 'A positive module ID and version are required.');
     if (!task.contract) add('task.contract', 'Task input declarations have not loaded. Retry automatic metadata loading; see the module status.', 'unknown');
     if (task.contract) {
       for (const [name, type] of Object.entries(task.contract.modelData)) {
@@ -125,7 +125,7 @@ export function validateDraft(draft: Draft): Issue[] {
       const path = `${group}[${index + 1}]`;
       const descriptor = entry.descriptor;
       if (entry.kind !== group.slice(0, -1) || descriptor.kind !== entry.kind) add(path, 'Component kind does not match this entry.');
-      if (!validIdentity(descriptor.id) || !validIdentity(descriptor.version)) add(path, 'A positive registry ID and version are required.');
+      if (!validIdentity(descriptor.id) || !validIdentity(descriptor.version)) add(path, 'A positive module ID and version are required.');
       if (entry.kind === 'dataset') {
         if (descriptor.files === undefined) add(`${path}.files`, 'Dataset aliases have not loaded. Retry automatic metadata loading; see the module status.', 'unknown');
         const inputs = task?.contract ? datasetInputs(task.contract) : {};

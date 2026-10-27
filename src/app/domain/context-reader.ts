@@ -36,7 +36,7 @@ export function parseContext(text: string): ContextRecipe {
   catch { throw new Error('YAML aliases are not supported. Use explicit context values.'); }
   const root = object(value, 'context');
   keys(root, ['type', 'causalbench', 'name', 'description', 'task', 'datasets', 'models', 'metrics'], 'context');
-  if (root['type'] !== 'context') throw new Error('Select a CausalBench context recipe (type: context). Python scripts and component manifests cannot be opened as contexts.');
+  if (root['type'] !== 'context') throw new Error('Select a CausalBench context (type: context). Python scripts and component manifests cannot be opened as contexts.');
   const cb = object(root['causalbench'], 'causalbench');
   keys(cb, ['major', 'minor', 'build'], 'causalbench');
   if (!['major', 'minor', 'build'].every(key => /^(0|[1-9]\d*)$/.test(String(cb[key]))))

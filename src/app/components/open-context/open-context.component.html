@@ -1,6 +1,6 @@
 <dialog #dialog class="open-context-dialog" aria-labelledby="open-context-title" (cancel)="close()">
   <div class="section-heading"><div><p class="eyebrow">CONTINUE AN EXPERIMENT</p><h2 id="open-context-title">Open context</h2></div><button aria-label="Close context picker" (click)="close()">✕</button></div>
-  <p class="muted small">Open a registered context or a saved recipe. Changes are edited locally and can be exported.</p>
+  <p class="muted small">Open a registered context or a saved context. Changes are edited locally and can be exported.</p>
   <section aria-label="Saved registry contexts">
     <label for="context-search">Find a saved context</label><input id="context-search" type="search" [(ngModel)]="search" (ngModelChange)="selection = ''; cancelPreview()" placeholder="Context name, ID, or version">
     <label for="saved-context">Saved context and version</label><select id="saved-context" [(ngModel)]="selection" (ngModelChange)="selectContext()"><option value="">Select a context…</option>@for (context of options; track key(context)) {
@@ -23,8 +23,8 @@
   }
   <button class="text-button" (click)="refreshLibrary()" [disabled]="!tokens.hasToken() || library.status === 'loading'">Refresh saved contexts</button>
 </section>
-<section class="file-source" aria-label="Open a context file"><label for="context-file">Context file</label><input id="context-file" type="file" accept=".yaml,.yml,.json,.zip" (change)="readFile($event)"><p class="muted small">YAML or JSON recipe (up to 2 MB), or a context ZIP containing config.yaml (up to 8 MB).</p></section>
-<details class="paste-source"><summary>Paste YAML or JSON</summary><label for="context-document">Saved context recipe</label><textarea id="context-document" class="code-input" [(ngModel)]="text" (ngModelChange)="cancelPreview()" rows="9" spellcheck="false" placeholder="type: context"></textarea><button (click)="previewText()" [disabled]="!text.trim() || loading">Preview context</button></details>
+<section class="file-source" aria-label="Open a context file"><label for="context-file">Context file</label><input id="context-file" type="file" accept=".yaml,.yml,.json,.zip" (change)="readFile($event)"><p class="muted small">YAML or JSON context (up to 2 MB), or a context ZIP containing config.yaml (up to 8 MB).</p></section>
+<details class="paste-source"><summary>Paste YAML or JSON</summary><label for="context-document">Saved context</label><textarea id="context-document" class="code-input" [(ngModel)]="text" (ngModelChange)="cancelPreview()" rows="9" spellcheck="false" placeholder="type: context"></textarea><button (click)="previewText()" [disabled]="!text.trim() || loading">Preview context</button></details>
 @if (loading) {
   <p role="status" class="runtime-note">Reading context… The current draft is retained until you open the preview.</p>
 }
@@ -37,7 +37,7 @@
   }<p class="small">{{ loaded.recipe.description }}</p><p class="small">Task #{{ loaded.recipe.task.id }} · v{{ loaded.recipe.task.version }}</p><p class="small">{{ loaded.recipe.datasets.length }} dataset entries · {{ loaded.recipe.models.length }} model configurations · {{ loaded.recipe.metrics.length }} metric configurations</p><p class="small muted">Mappings and saved settings will be restored. Missing component metadata stays visible for completion before validated export.</p></section>
 }
 @if (preview && replacesDraft) {
-  <p class="runtime-note">Opening this context replaces the current recipe, unapplied edits, and Blueprint sketches. Cancel keeps your current work.</p>
+  <p class="runtime-note">Opening this context replaces the current context, unapplied edits, and Blueprint sketches. Cancel keeps your current work.</p>
 }
 <div class="actions"><button (click)="close()">Cancel opening</button><button class="primary" (click)="open()" [disabled]="!preview || loading">{{ replacesDraft ? 'Replace draft & open' : 'Open in designer' }}</button></div>
 </dialog>

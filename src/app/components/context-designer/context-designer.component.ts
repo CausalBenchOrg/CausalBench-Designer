@@ -4,7 +4,7 @@ import { CatalogService } from '../../services/catalog.service';
 import { ContextStore } from '../../services/context-store.service';
 import { TokenService } from '../../services/token.service';
 import { ThemeService } from '../../services/theme.service';
-import { Descriptor, Entry, Kind, clone, compatibility, counts, newEntry, validateDraft } from '../../domain/context';
+import { Descriptor, Entry, EntryKind, clone, compatibility, counts, newEntry, validateDraft } from '../../domain/context';
 import { descriptorExample, parseDescriptor } from '../../domain/descriptors';
 import { BlueprintNode, BlueprintStore } from '../../services/blueprint-store.service';
 import { OpenedContext, hydrateContext } from '../../domain/context-import';
@@ -19,8 +19,8 @@ export class ContextDesignerComponent implements DoCheck {
   readonly blueprintMode: boolean;
   @ViewChild('metadataDialog', { static: true }) metadataDialog!: ElementRef<HTMLDialogElement>;
   @ViewChild('catalogSelect', { static: true }) catalogSelect!: ElementRef<HTMLSelectElement>;
-  readonly kinds: Kind[] = ['task', 'dataset', 'model', 'metric'];
-  selectedKind: Kind = 'dataset';
+  readonly kinds: EntryKind[] = ['dataset', 'model', 'metric'];
+  selectedKind: EntryKind = 'dataset';
   selection = '';
   search = '';
   editing: Entry | null = null;
@@ -52,7 +52,7 @@ export class ContextDesignerComponent implements DoCheck {
   get taskMissingFromCatalog() { return this.draft.task && !this.catalog.states.task.items.some(d => this.key(d) === this.selectedTaskKey); }
   get hasCurrentWork() { return !!(this.draft.name || this.draft.description || this.draft.task || this.summary.datasets || this.summary.models || this.summary.metrics || this.editing || this.blueprint.nodes.length); }
   openExistingContext(opened: OpenedContext) {
-    const descriptors = this.kinds.flatMap(kind => this.catalog.states[kind].items);
+    const descriptors = this.catalog.kinds.flatMap(kind => this.catalog.states[kind].items);
     const draft = hydrateContext(opened.recipe, descriptors);
     this.store.replace(draft, opened.source);
     this.blueprint.reset(this.draft);
@@ -67,7 +67,7 @@ export class ContextDesignerComponent implements DoCheck {
   get selectedDescriptor() { return this.catalog.states[this.selectedKind].items.find(d => this.key(d) === this.selection); }
   get selectionCompatibility() { return this.selectedDescriptor ? compatibility(this.selectedDescriptor, this.draft.task) : 'unknown'; }
   key(d: Descriptor) { return `${d.id}@${d.version}`; }
-  setKind(kind: Kind) { this.selectedKind = kind; this.selection = ''; this.search = ''; }
+  setKind(kind: EntryKind) { this.selectedKind = kind; this.selection = ''; this.search = ''; }
   selectTask(key: string) {
     const task = this.catalog.states.task.items.find(d => this.key(d) === key) ?? (this.selectedTaskKey === key ? this.draft.task : null);
     this.store.selectTask(task);
@@ -76,7 +76,6 @@ export class ContextDesignerComponent implements DoCheck {
   addSelected() {
     const descriptor = this.selectedDescriptor;
     if (!descriptor) return;
-    if (descriptor.kind === 'task') { this.store.selectTask(descriptor); return; }
     if (descriptor.kind !== 'dataset' && compatibility(descriptor, this.draft.task) === 'mismatch') return;
     this.editing = newEntry(descriptor);
   }
@@ -115,9 +114,8 @@ export class ContextDesignerComponent implements DoCheck {
       this.store.updateMetadata(descriptor);
       if (this.editing && this.editing.kind === descriptor.kind && this.key(this.editing.descriptor) === this.key(descriptor))
         this.editing = { ...this.editing, descriptor: clone(descriptor) };
-      this.selectedKind = descriptor.kind;
       this.search = '';
-      this.selection = this.key(descriptor);
+      if (descriptor.kind !== 'task') { this.selectedKind = descriptor.kind; this.selection = this.key(descriptor); }
       this.notice = 'Manual descriptor saved. Check its identity and contract against the actual component.';
       this.closeMetadata();
     } catch (error) { this.metadataError = error instanceof Error ? error.message : 'Invalid descriptor.'; }

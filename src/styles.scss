@@ -103,8 +103,8 @@ dialog::backdrop { background: var(--scrim); backdrop-filter: blur(2px); }
 .composition-toggle input:checked::after { transform:translateX(14px); }
 @media(max-width:760px){ .app-header{flex-wrap:wrap;padding:14px 18px;gap:12px}.app-header nav{margin-left:0}.version{display:none} }
 
-.theme-toggle { display:inline-flex; align-items:center; gap:7px; white-space:nowrap; font-size:12px; padding:6px 10px; }
-.theme-toggle span { font-size:18px; line-height:1; }
-.header-action { white-space:nowrap;font-size:12px;padding:6px 10px; }
+.theme-toggle { display:inline-grid; place-items:center; flex-shrink:0; width:40px; height:40px; padding:8px; border:0; background:transparent; color:var(--muted); }
+.theme-toggle:hover:not(:disabled) { background:transparent; color:var(--ink); }
+.context-actions { display:flex; align-items:center; flex-wrap:wrap; gap:12px; }
 .opened-source { margin-bottom:10px;overflow-wrap:anywhere; }
 input::placeholder, textarea::placeholder { color:var(--muted); opacity:.8; }

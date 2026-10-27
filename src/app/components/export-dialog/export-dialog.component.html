@@ -1,5 +1,5 @@
 <dialog #dialog class="export-dialog" aria-labelledby="export-title" (cancel)="close()">
-  <div class="section-heading"><div><p class="eyebrow">REVIEW THE EXACT RECIPE</p><h2 id="export-title">Export context</h2></div><button (click)="close()" aria-label="Close export">✕</button></div>
+  <div class="section-heading"><div><p class="eyebrow">REVIEW THE EXACT CONTEXT</p><h2 id="export-title">Export context</h2></div><button (click)="close()" aria-label="Close export">✕</button></div>
   <p>{{ summary.datasets }} dataset entries · {{ summary.models }} model configurations · {{ summary.metrics }} metric configurations</p><p><strong>{{ summary.scenarios }} scenarios · {{ summary.evaluations }} metric evaluations</strong></p>
   @if (issues.length) {
     <div class="error-box" role="alert"><strong>Export is incomplete</strong><p>Resolve missing or incompatible metadata and settings before downloading.</p><ul>@for (issue of issues; track issue.path + ':' + issue.severity + ':' + issue.message) {

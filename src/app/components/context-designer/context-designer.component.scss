@@ -3,7 +3,7 @@
 .page-heading p.muted { max-width: 720px; margin-top: 8px; font-size: 13px; }
 .workspace { display: grid; grid-template-columns: 275px minmax(0,1fr); gap: 24px; align-items: start; }
 .catalog { position: sticky; top: 20px; padding: 20px; }
-.kind-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin: 16px 0; }
+.kind-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin: 16px 0; }
 .kind-tabs button { font-size: 12px; padding: 7px; }
 .kind-tabs .active { background: var(--active); border-color: var(--accent); color: var(--accent); }
 .descriptor-summary { margin: 16px 0; padding-top: 12px; border-top: 1px solid var(--line); }
@@ -14,7 +14,7 @@
 .session button { margin: 10px 5px 0 0; }
 .footnote { margin-top: 20px; }
 .context-workspace { display: grid; gap: 20px; min-width: 0; }
-.fields { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.catalog-feedback { margin-top: 6px; }
 .task-contract { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid var(--line); margin-top: 20px; padding-top: 16px; }
 .expansion { display: flex; gap: 22px; align-items: center; padding: 10px 16px; }
 .expansion div { display: grid; }
@@ -24,5 +24,5 @@
 .issue-list { list-style: none; padding: 0; display: grid; gap: 12px; }
 .issue-list li { display: flex; align-items: flex-start; gap: 12px; font-size: 12px; }
 .metadata-dialog p { margin: 10px 0; }
-@media (max-width: 1050px) { .version { display: none; } .designer { padding: 22px; } .workspace { grid-template-columns: 240px minmax(0,1fr); gap: 18px; } .fields { grid-template-columns: 1fr; gap: 0; } .expansion { flex-wrap: wrap; } .expansion p { margin-left: 0; } }
+@media (max-width: 1050px) { .version { display: none; } .designer { padding: 22px; } .workspace { grid-template-columns: 240px minmax(0,1fr); gap: 18px; } .expansion { flex-wrap: wrap; } .expansion p { margin-left: 0; } }
 @media (max-width: 760px) { .app-header { flex-wrap: wrap; padding: 14px 18px; gap: 12px; } nav { margin-left: 0; } .workspace { grid-template-columns: 1fr; } .catalog { position: static; } .page-heading { align-items: flex-start; flex-wrap: wrap; } .designer { padding: 18px; } }
