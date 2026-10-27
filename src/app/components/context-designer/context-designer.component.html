@@ -19,7 +19,7 @@
 <main class="designer">
   <div class="page-heading">
     <div><p class="eyebrow">BENCHMARK WORKSPACE</p><h1>{{ blueprintMode ? 'Blueprint editor' : 'Design a context' }}</h1><p class="muted">Select a task, map dataset aliases, and compare explicit model configurations. Execute the created context locally using the CausalBench library.</p></div>
-    <div><button class="primary" (click)="showExport = true" [disabled]="editing !== null || (blueprintMode && blueprint.unconfiguredCount > 0)">Review &amp; export</button>@if (editing) {
+    <div class="page-actions"><button class="primary" (click)="showExport = true" [disabled]="editing !== null || (blueprintMode && blueprint.unconfiguredCount > 0)">Review &amp; export</button>@if (editing) {
     <p class="small muted">Apply or cancel the open configuration first.</p>
     }@if (blueprintMode && blueprint.unconfiguredCount) {
     <p class="small muted">Configure or remove {{ blueprint.unconfiguredCount }} unconfigured canvas nodes before exporting.</p>
