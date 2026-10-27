@@ -1,5 +1,3 @@
-# Deployment branch: publish the built site from /docs.
-# Application source and build tools are maintained on main.
 /*
 !/.gitignore
 !/docs/
