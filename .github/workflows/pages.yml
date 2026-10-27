@@ -1,0 +1,99 @@
+name: Build and deploy GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run browser regression tests
+        run: |
+          export CHROME_BIN="$(command -v google-chrome)"
+          npm test -- --watch=false --browsers=ChromeHeadless
+
+      # The npm prebuild hook rejects high/critical production advisories.
+      - name: Audit and build Pages site
+        run: npm run build:pages
+
+      - name: Upload Pages site
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: docs
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check out deployment branch
+        uses: actions/checkout@v6
+        with:
+          ref: gh-pages
+
+      - name: Download the built site
+        uses: actions/download-artifact@v5
+        with:
+          name: github-pages
+          path: ${{ runner.temp }}/pages-artifact
+
+      - name: Update gh-pages with only the website
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          git rm -r --ignore-unmatch .
+          mkdir -p docs
+          tar -xf "$RUNNER_TEMP/pages-artifact/artifact.tar" -C docs
+          # upload-pages-artifact excludes dotfiles from its archive.
+          touch docs/.nojekyll
+          printf '%s\n' '/*' '!/.gitignore' '!/docs/' > .gitignore
+          git add --all
+          if git diff --cached --quiet; then
+            echo 'The deployed files are already up to date.'
+          else
+            git -c user.name='github-actions[bot]' \
+                -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+                commit -m "Deploy website from ${SOURCE_SHA}"
+            git push origin HEAD:gh-pages
+          fi
+
+      # A GITHUB_TOKEN push does not trigger branch-based Pages deployment.
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Deploy the same build to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
