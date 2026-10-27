@@ -85,6 +85,8 @@ To edit the example, connect a registry session, choose **Open context**, select
 
 The locked toolchain is Angular 21.2.25, Angular CLI/build 21.2.28, and TypeScript 5.9.3. Use Node 22.12+ (22.x) or Node 24.x; verification uses Node 24.12.0/npm 11.6.2. The application uses Angular's current application builder, compiled templates, and Zone.js change detection. Context import uses pinned `yaml@2.9.1` and patched `fflate@0.8.3`, loaded only when reading a context.
 
+`@emnapi/core` and `@emnapi/runtime` are explicitly pinned as development dependencies because npm can otherwise omit these transitive build-tool peers from a macOS-generated lockfile and fail `npm ci` on Linux ([upstream issue](https://github.com/napi-rs/napi-rs/issues/3174)). Keep these declarations when refreshing the lockfile.
+
 ```sh
 npm ci
 npm start -- --host 127.0.0.1
